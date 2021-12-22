@@ -1,6 +1,7 @@
 package tests_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -9,7 +10,17 @@ import (
 )
 
 func TestPostgres(t *testing.T) {
-	if DB.Dialector.Name() != "postgres" {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if db.Dialector.Name() != "postgres" {
 		t.Skip()
 	}
 
@@ -20,32 +31,32 @@ func TestPostgres(t *testing.T) {
 		Things pq.StringArray `gorm:"type:text[]"`
 	}
 
-	if err := DB.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;").Error; err != nil {
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;").Error; err != nil {
 		t.Errorf("Failed to create extension pgcrypto, got error %v", err)
 	}
 
-	DB.Migrator().DropTable(&Harumph{})
+	db.Migrator().DropTable(&Harumph{})
 
-	if err := DB.AutoMigrate(&Harumph{}); err != nil {
+	if err := db.AutoMigrate(&Harumph{}); err != nil {
 		t.Fatalf("Failed to migrate for uuid default value, got error: %v", err)
 	}
 
 	harumph := Harumph{}
-	if err := DB.Create(&harumph).Error; err == nil {
+	if err := db.Create(&harumph).Error; err == nil {
 		t.Fatalf("should failed to create data, name can't be blank")
 	}
 
 	harumph = Harumph{Name: "jinzhu"}
-	if err := DB.Create(&harumph).Error; err != nil {
+	if err := db.Create(&harumph).Error; err != nil {
 		t.Fatalf("should be able to create data, but got %v", err)
 	}
 
 	var result Harumph
-	if err := DB.First(&result, "id = ?", harumph.ID).Error; err != nil || harumph.Name != "jinzhu" {
+	if err := db.First(&result, "id = ?", harumph.ID).Error; err != nil || harumph.Name != "jinzhu" {
 		t.Errorf("No error should happen, but got %v", err)
 	}
 
-	if err := DB.Where("id = $1", harumph.ID).First(&Harumph{}).Error; err != nil || harumph.Name != "jinzhu" {
+	if err := db.Where("id = $1", harumph.ID).First(&Harumph{}).Error; err != nil || harumph.Name != "jinzhu" {
 		t.Errorf("No error should happen, but got %v", err)
 	}
 }
@@ -63,16 +74,26 @@ type Category struct {
 }
 
 func TestMany2ManyWithDefaultValueUUID(t *testing.T) {
-	if DB.Dialector.Name() != "postgres" {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if db.Dialector.Name() != "postgres" {
 		t.Skip()
 	}
 
-	if err := DB.Exec(`create extension if not exists "uuid-ossp"`).Error; err != nil {
+	if err := db.Exec(`create extension if not exists "uuid-ossp"`).Error; err != nil {
 		t.Fatalf("Failed to create 'uuid-ossp' extension, but got error %v", err)
 	}
 
-	DB.Migrator().DropTable(&Post{}, &Category{}, "post_categories")
-	DB.AutoMigrate(&Post{}, &Category{})
+	db.Migrator().DropTable(&Post{}, &Category{}, "post_categories")
+	db.AutoMigrate(&Post{}, &Category{})
 
 	post := Post{
 		Title: "Hello World",
@@ -82,7 +103,7 @@ func TestMany2ManyWithDefaultValueUUID(t *testing.T) {
 		},
 	}
 
-	if err := DB.Create(&post).Error; err != nil {
+	if err := db.Create(&post).Error; err != nil {
 		t.Errorf("Failed, got error: %v", err)
 	}
 }

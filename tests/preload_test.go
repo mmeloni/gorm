@@ -2,6 +2,7 @@ package tests_test
 
 import (
 	"encoding/json"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -13,7 +14,17 @@ import (
 	. "gorm.io/gorm/utils/tests"
 )
 
-func TestPreloadWithAssociations(t *testing.T) {
+func _TestPreloadWithAssociations(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user = *GetUser("preload_with_associations", Config{
 		Account:   true,
 		Pets:      2,
@@ -25,15 +36,15 @@ func TestPreloadWithAssociations(t *testing.T) {
 		Friends:   1,
 	})
 
-	if err := DB.Create(&user).Error; err != nil {
+	if err := db.Create(&user).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
-	CheckUser(t, user, user)
+	CheckUser(t, user, user, db)
 
 	var user2 User
-	DB.Preload(clause.Associations).Find(&user2, "id = ?", user.ID)
-	CheckUser(t, user2, user)
+	db.Preload(clause.Associations).Find(&user2, "id = ?", user.ID)
+	CheckUser(t, user2, user, db)
 
 	var user3 = *GetUser("preload_with_associations_new", Config{
 		Account:   true,
@@ -46,35 +57,55 @@ func TestPreloadWithAssociations(t *testing.T) {
 		Friends:   1,
 	})
 
-	DB.Preload(clause.Associations).Find(&user3, "id = ?", user.ID)
-	CheckUser(t, user3, user)
+	db.Preload(clause.Associations).Find(&user3, "id = ?", user.ID)
+	CheckUser(t, user3, user, db)
 }
 
-func TestNestedPreload(t *testing.T) {
+func _TestNestedPreload(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user = *GetUser("nested_preload", Config{Pets: 2})
 
 	for idx, pet := range user.Pets {
 		pet.Toy = Toy{Name: "toy_nested_preload_" + strconv.Itoa(idx+1)}
 	}
 
-	if err := DB.Create(&user).Error; err != nil {
+	if err := db.Create(&user).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
 	var user2 User
-	DB.Preload("Pets.Toy").Find(&user2, "id = ?", user.ID)
-	CheckUser(t, user2, user)
+	db.Preload("Pets.Toy").Find(&user2, "id = ?", user.ID)
+	CheckUser(t, user2, user, db)
 
 	var user3 User
-	DB.Preload(clause.Associations+"."+clause.Associations).Find(&user3, "id = ?", user.ID)
-	CheckUser(t, user3, user)
+	db.Preload(clause.Associations+"."+clause.Associations).Find(&user3, "id = ?", user.ID)
+	CheckUser(t, user3, user, db)
 
 	var user4 *User
-	DB.Preload("Pets.Toy").Find(&user4, "id = ?", user.ID)
-	CheckUser(t, *user4, user)
+	db.Preload("Pets.Toy").Find(&user4, "id = ?", user.ID)
+	CheckUser(t, *user4, user, db)
 }
 
-func TestNestedPreloadForSlice(t *testing.T) {
+func _TestNestedPreloadForSlice(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []User{
 		*GetUser("slice_nested_preload_1", Config{Pets: 2}),
 		*GetUser("slice_nested_preload_2", Config{Pets: 0}),
@@ -87,7 +118,7 @@ func TestNestedPreloadForSlice(t *testing.T) {
 		}
 	}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
@@ -97,21 +128,31 @@ func TestNestedPreloadForSlice(t *testing.T) {
 	}
 
 	var users2 []User
-	DB.Preload("Pets.Toy").Find(&users2, "id IN ?", userIDs)
+	db.Preload("Pets.Toy").Find(&users2, "id IN ?", userIDs)
 
 	for idx, user := range users2 {
-		CheckUser(t, user, users[idx])
+		CheckUser(t, user, users[idx], db)
 	}
 }
 
-func TestPreloadWithConds(t *testing.T) {
+func _TestPreloadWithConds(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []User{
 		*GetUser("slice_nested_preload_1", Config{Account: true}),
 		*GetUser("slice_nested_preload_2", Config{Account: false}),
 		*GetUser("slice_nested_preload_3", Config{Account: true}),
 	}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
@@ -121,7 +162,7 @@ func TestPreloadWithConds(t *testing.T) {
 	}
 
 	var users2 []User
-	DB.Preload("Account", clause.Eq{Column: "number", Value: users[0].Account.Number}).Find(&users2, "id IN ?", userIDs)
+	db.Preload("Account", clause.Eq{Column: "number", Value: users[0].Account.Number}).Find(&users2, "id IN ?", userIDs)
 	sort.Slice(users2, func(i, j int) bool {
 		return users2[i].ID < users2[j].ID
 	})
@@ -132,10 +173,10 @@ func TestPreloadWithConds(t *testing.T) {
 		}
 	}
 
-	CheckUser(t, users2[0], users[0])
+	CheckUser(t, users2[0], users[0], db)
 
 	var users3 []User
-	if err := DB.Preload("Account", func(tx *gorm.DB) *gorm.DB {
+	if err := db.Preload("Account", func(tx *gorm.DB) *gorm.DB {
 		return tx.Table("accounts AS a").Select("a.*")
 	}).Find(&users3, "id IN ?", userIDs).Error; err != nil {
 		t.Errorf("failed to query, got error %v", err)
@@ -145,24 +186,34 @@ func TestPreloadWithConds(t *testing.T) {
 	})
 
 	for i, u := range users3 {
-		CheckUser(t, u, users[i])
+		CheckUser(t, u, users[i], db)
 	}
 
 	var user4 User
-	DB.Delete(&users3[0].Account)
+	db.Delete(&users3[0].Account)
 
-	if err := DB.Preload(clause.Associations).Take(&user4, "id = ?", users3[0].ID).Error; err != nil || user4.Account.ID != 0 {
+	if err := db.Preload(clause.Associations).Take(&user4, "id = ?", users3[0].ID).Error; err != nil || user4.Account.ID != 0 {
 		t.Errorf("failed to query, got error %v, account: %#v", err, user4.Account)
 	}
 
-	if err := DB.Preload(clause.Associations, func(tx *gorm.DB) *gorm.DB {
+	if err := db.Preload(clause.Associations, func(tx *gorm.DB) *gorm.DB {
 		return tx.Unscoped()
 	}).Take(&user4, "id = ?", users3[0].ID).Error; err != nil || user4.Account.ID == 0 {
 		t.Errorf("failed to query, got error %v, account: %#v", err, user4.Account)
 	}
 }
 
-func TestNestedPreloadWithConds(t *testing.T) {
+func _TestNestedPreloadWithConds(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []User{
 		*GetUser("slice_nested_preload_1", Config{Pets: 2}),
 		*GetUser("slice_nested_preload_2", Config{Pets: 0}),
@@ -175,7 +226,7 @@ func TestNestedPreloadWithConds(t *testing.T) {
 		}
 	}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
@@ -185,7 +236,7 @@ func TestNestedPreloadWithConds(t *testing.T) {
 	}
 
 	var users2 []User
-	DB.Preload("Pets.Toy", "name like ?", `%preload_3`).Find(&users2, "id IN ?", userIDs)
+	db.Preload("Pets.Toy", "name like ?", `%preload_3`).Find(&users2, "id IN ?", userIDs)
 
 	for idx, user := range users2[0:2] {
 		for _, pet := range user.Pets {
@@ -208,15 +259,25 @@ func TestNestedPreloadWithConds(t *testing.T) {
 			}
 		}
 
-		CheckPet(t, *users2[2].Pets[2], *users[2].Pets[2])
+		CheckPet(t, *users2[2].Pets[2], *users[2].Pets[2], db)
 	}
 }
 
-func TestPreloadEmptyData(t *testing.T) {
+func _TestPreloadEmptyData(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user = *GetUser("user_without_associations", Config{})
-	DB.Create(&user)
+	db.Create(&user)
 
-	DB.Preload("Team").Preload("Languages").Preload("Friends").First(&user, "name = ?", user.Name)
+	db.Preload("Team").Preload("Languages").Preload("Friends").First(&user, "name = ?", user.Name)
 
 	if r, err := json.Marshal(&user); err != nil {
 		t.Errorf("failed to marshal users, got error %v", err)
@@ -225,7 +286,7 @@ func TestPreloadEmptyData(t *testing.T) {
 	}
 
 	var results []User
-	DB.Preload("Team").Preload("Languages").Preload("Friends").Find(&results, "name = ?", user.Name)
+	db.Preload("Team").Preload("Languages").Preload("Friends").Find(&results, "name = ?", user.Name)
 
 	if r, err := json.Marshal(&results); err != nil {
 		t.Errorf("failed to marshal users, got error %v", err)
@@ -234,7 +295,17 @@ func TestPreloadEmptyData(t *testing.T) {
 	}
 }
 
-func TestPreloadGoroutine(t *testing.T) {
+func _TestPreloadGoroutine(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var wg sync.WaitGroup
 
 	wg.Add(10)
@@ -242,7 +313,7 @@ func TestPreloadGoroutine(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			var user2 []User
-			tx := DB.Where("id = ?", 1).Session(&gorm.Session{})
+			tx := db.Where("id = ?", 1).Session(&gorm.Session{})
 
 			if err := tx.Preload("Team").Find(&user2).Error; err != nil {
 				t.Error(err)

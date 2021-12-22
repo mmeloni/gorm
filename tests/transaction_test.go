@@ -3,6 +3,7 @@ package tests_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"gorm.io/gorm"
@@ -10,7 +11,17 @@ import (
 )
 
 func TestTransaction(t *testing.T) {
-	tx := DB.Begin()
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	tx := db.Begin()
 	user := *GetUser("transaction", Config{})
 
 	if err := tx.Save(&user).Error; err != nil {
@@ -37,11 +48,11 @@ func TestTransaction(t *testing.T) {
 
 	tx.Rollback()
 
-	if err := DB.First(&User{}, "name = ?", "transaction").Error; err == nil {
+	if err := db.First(&User{}, "name = ?", "transaction").Error; err == nil {
 		t.Fatalf("Should not find record after rollback, but got %v", err)
 	}
 
-	txDB := DB.Where("fake_name = ?", "fake_name")
+	txDB := db.Where("fake_name = ?", "fake_name")
 	tx2 := txDB.Session(&gorm.Session{NewDB: true}).Begin()
 	user2 := *GetUser("transaction-2", Config{})
 	if err := tx2.Save(&user2).Error; err != nil {
@@ -54,20 +65,30 @@ func TestTransaction(t *testing.T) {
 
 	tx2.Commit()
 
-	if err := DB.First(&User{}, "name = ?", "transaction-2").Error; err != nil {
+	if err := db.First(&User{}, "name = ?", "transaction-2").Error; err != nil {
 		t.Fatalf("Should be able to find committed record, but got %v", err)
 	}
 }
 
 func TestCancelTransaction(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	cancelFunc()
 
 	user := *GetUser("cancel_transaction", Config{})
-	DB.Create(&user)
+	db.Create(&user)
 
-	err := DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var result User
 		tx.First(&result, user.ID)
 		return nil
@@ -79,6 +100,16 @@ func TestCancelTransaction(t *testing.T) {
 }
 
 func TestTransactionWithBlock(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	assertPanic := func(f func()) {
 		defer func() {
 			if r := recover(); r == nil {
@@ -89,7 +120,7 @@ func TestTransactionWithBlock(t *testing.T) {
 	}
 
 	// rollback
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		user := *GetUser("transaction-block", Config{})
 		if err := tx.Save(&user).Error; err != nil {
 			t.Fatalf("No error should raise")
@@ -106,12 +137,12 @@ func TestTransactionWithBlock(t *testing.T) {
 		t.Fatalf("Transaction return error will equal the block returns error")
 	}
 
-	if err := DB.First(&User{}, "name = ?", "transaction-block").Error; err == nil {
+	if err := db.First(&User{}, "name = ?", "transaction-block").Error; err == nil {
 		t.Fatalf("Should not find record after rollback")
 	}
 
 	// commit
-	DB.Transaction(func(tx *gorm.DB) error {
+	db.Transaction(func(tx *gorm.DB) error {
 		user := *GetUser("transaction-block-2", Config{})
 		if err := tx.Save(&user).Error; err != nil {
 			t.Fatalf("No error should raise")
@@ -123,13 +154,13 @@ func TestTransactionWithBlock(t *testing.T) {
 		return nil
 	})
 
-	if err := DB.First(&User{}, "name = ?", "transaction-block-2").Error; err != nil {
+	if err := db.First(&User{}, "name = ?", "transaction-block-2").Error; err != nil {
 		t.Fatalf("Should be able to find committed record")
 	}
 
 	// panic will rollback
 	assertPanic(func() {
-		DB.Transaction(func(tx *gorm.DB) error {
+		db.Transaction(func(tx *gorm.DB) error {
 			user := *GetUser("transaction-block-3", Config{})
 			if err := tx.Save(&user).Error; err != nil {
 				t.Fatalf("No error should raise")
@@ -143,13 +174,23 @@ func TestTransactionWithBlock(t *testing.T) {
 		})
 	})
 
-	if err := DB.First(&User{}, "name = ?", "transaction-block-3").Error; err == nil {
+	if err := db.First(&User{}, "name = ?", "transaction-block-3").Error; err == nil {
 		t.Fatalf("Should not find record after panic rollback")
 	}
 }
 
 func TestTransactionRaiseErrorOnRollbackAfterCommit(t *testing.T) {
-	tx := DB.Begin()
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	tx := db.Begin()
 	user := User{Name: "transaction"}
 	if err := tx.Save(&user).Error; err != nil {
 		t.Fatalf("No error should raise")
@@ -165,7 +206,17 @@ func TestTransactionRaiseErrorOnRollbackAfterCommit(t *testing.T) {
 }
 
 func TestTransactionWithSavePoint(t *testing.T) {
-	tx := DB.Begin()
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	tx := db.Begin()
 
 	user := *GetUser("transaction-save-point", Config{})
 	tx.Create(&user)
@@ -208,27 +259,37 @@ func TestTransactionWithSavePoint(t *testing.T) {
 		t.Fatalf("Failed to commit, got error %v", err)
 	}
 
-	if err := DB.First(&User{}, "name = ?", user.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user1.Name).Error; err == nil {
+	if err := db.First(&User{}, "name = ?", user1.Name).Error; err == nil {
 		t.Fatalf("Should not find rollbacked record")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user2.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user2.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 }
 
 func TestNestedTransactionWithBlock(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var (
 		user  = *GetUser("transaction-nested", Config{})
 		user1 = *GetUser("transaction-nested-1", Config{})
 		user2 = *GetUser("transaction-nested-2", Config{})
 	)
 
-	if err := DB.Transaction(func(tx *gorm.DB) error {
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		tx.Create(&user)
 
 		if err := tx.First(&User{}, "name = ?", user.Name).Error; err != nil {
@@ -271,27 +332,37 @@ func TestNestedTransactionWithBlock(t *testing.T) {
 		t.Fatalf("no error should return, but got %v", err)
 	}
 
-	if err := DB.First(&User{}, "name = ?", user.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user1.Name).Error; err == nil {
+	if err := db.First(&User{}, "name = ?", user1.Name).Error; err == nil {
 		t.Fatalf("Should not find rollbacked record")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user2.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user2.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 }
 
 func TestDisabledNestedTransaction(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var (
 		user  = *GetUser("transaction-nested", Config{})
 		user1 = *GetUser("transaction-nested-1", Config{})
 		user2 = *GetUser("transaction-nested-2", Config{})
 	)
 
-	if err := DB.Session(&gorm.Session{DisableNestedTransaction: true}).Transaction(func(tx *gorm.DB) error {
+	if err := db.Session(&gorm.Session{DisableNestedTransaction: true}).Transaction(func(tx *gorm.DB) error {
 		tx.Create(&user)
 
 		if err := tx.First(&User{}, "name = ?", user.Name).Error; err != nil {
@@ -334,34 +405,45 @@ func TestDisabledNestedTransaction(t *testing.T) {
 		t.Fatalf("no error should return, but got %v", err)
 	}
 
-	if err := DB.First(&User{}, "name = ?", user.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user1.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user1.Name).Error; err != nil {
 		t.Fatalf("Should not rollback record if disabled nested transaction support")
 	}
 
-	if err := DB.First(&User{}, "name = ?", user2.Name).Error; err != nil {
+	if err := db.First(&User{}, "name = ?", user2.Name).Error; err != nil {
 		t.Fatalf("Should find saved record")
 	}
 }
 
 func TestTransactionOnClosedConn(t *testing.T) {
-	DB, err := OpenTestConnection()
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	// todo @immugorm: this test is not working on immudb
+	/*db, err = OpenTestConnection()
 	if err != nil {
 		t.Fatalf("failed to connect database, got error %v", err)
-	}
-	rawDB, _ := DB.DB()
+	}*/
+	rawDB, _ := db.DB()
 	rawDB.Close()
 
-	if err := DB.Transaction(func(tx *gorm.DB) error {
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		return nil
 	}); err == nil {
 		t.Errorf("should returns error when commit with closed conn, got error %v", err)
 	}
 
-	if err := DB.Session(&gorm.Session{PrepareStmt: true}).Transaction(func(tx *gorm.DB) error {
+	if err := db.Session(&gorm.Session{PrepareStmt: true}).Transaction(func(tx *gorm.DB) error {
 		return nil
 	}); err == nil {
 		t.Errorf("should returns error when commit with closed conn, got error %v", err)

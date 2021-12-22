@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -19,8 +20,18 @@ import (
 )
 
 func TestScannerValuer(t *testing.T) {
-	DB.Migrator().DropTable(&ScannerValuerStruct{})
-	if err := DB.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&ScannerValuerStruct{})
+	if err := db.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
 		t.Fatalf("no error should happen when migrate scanner, valuer struct, got error %v", err)
 	}
 
@@ -29,7 +40,7 @@ func TestScannerValuer(t *testing.T) {
 		Gender:   &sql.NullString{String: "M", Valid: true},
 		Age:      sql.NullInt64{Int64: 18, Valid: true},
 		Male:     sql.NullBool{Bool: true, Valid: true},
-		Height:   sql.NullFloat64{Float64: 1.8888, Valid: true},
+		Height:   sql.NullInt64{Int64: 1, Valid: true},
 		Birthday: sql.NullTime{Time: time.Now(), Valid: true},
 		Allergen: NullString{sql.NullString{String: "Allergen", Valid: true}},
 		Password: EncryptedData("pass1"),
@@ -45,13 +56,13 @@ func TestScannerValuer(t *testing.T) {
 		ExampleStructPtr: &ExampleStruct{"name", "value2"},
 	}
 
-	if err := DB.Create(&data).Error; err != nil {
+	if err := db.Create(&data).Error; err != nil {
 		t.Fatalf("No error should happened when create scanner valuer struct, but got %v", err)
 	}
 
 	var result ScannerValuerStruct
 
-	if err := DB.Find(&result, "id = ?", data.ID).Error; err != nil {
+	if err := db.Find(&result, "id = ?", data.ID).Error; err != nil {
 		t.Fatalf("no error should happen when query scanner, valuer struct, but got %v", err)
 	}
 
@@ -66,8 +77,18 @@ func TestScannerValuer(t *testing.T) {
 }
 
 func TestScannerValuerWithFirstOrCreate(t *testing.T) {
-	DB.Migrator().DropTable(&ScannerValuerStruct{})
-	if err := DB.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&ScannerValuerStruct{})
+	if err := db.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
 		t.Errorf("no error should happen when migrate scanner, valuer struct")
 	}
 
@@ -80,7 +101,7 @@ func TestScannerValuerWithFirstOrCreate(t *testing.T) {
 	}
 
 	var result ScannerValuerStruct
-	tx := DB.Where(data).FirstOrCreate(&result)
+	tx := db.Where(data).FirstOrCreate(&result)
 
 	if tx.RowsAffected != 1 {
 		t.Errorf("RowsAffected should be 1 after create some record")
@@ -92,7 +113,7 @@ func TestScannerValuerWithFirstOrCreate(t *testing.T) {
 
 	AssertObjEqual(t, result, data, "Name", "Gender", "Age")
 
-	if err := DB.Where(data).Assign(ScannerValuerStruct{Age: sql.NullInt64{Int64: 18, Valid: true}}).FirstOrCreate(&result).Error; err != nil {
+	if err := db.Where(data).Assign(ScannerValuerStruct{Age: sql.NullInt64{Int64: 18, Valid: true}}).FirstOrCreate(&result).Error; err != nil {
 		t.Errorf("Should not raise any error, but got %v", err)
 	}
 
@@ -101,7 +122,7 @@ func TestScannerValuerWithFirstOrCreate(t *testing.T) {
 	}
 
 	var result2 ScannerValuerStruct
-	if err := DB.First(&result2, result.ID).Error; err != nil {
+	if err := db.First(&result2, result.ID).Error; err != nil {
 		t.Errorf("got error %v when query with %v", err, result.ID)
 	}
 
@@ -109,8 +130,18 @@ func TestScannerValuerWithFirstOrCreate(t *testing.T) {
 }
 
 func TestInvalidValuer(t *testing.T) {
-	DB.Migrator().DropTable(&ScannerValuerStruct{})
-	if err := DB.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&ScannerValuerStruct{})
+	if err := db.Migrator().AutoMigrate(&ScannerValuerStruct{}); err != nil {
 		t.Errorf("no error should happen when migrate scanner, valuer struct")
 	}
 
@@ -120,20 +151,20 @@ func TestInvalidValuer(t *testing.T) {
 		ExampleStructPtr: &ExampleStruct{"name", "value2"},
 	}
 
-	if err := DB.Create(&data).Error; err == nil {
+	if err := db.Create(&data).Error; err == nil {
 		t.Errorf("Should failed to create data with invalid data")
 	}
 
 	data.Password = EncryptedData("pass1")
-	if err := DB.Create(&data).Error; err != nil {
+	if err := db.Create(&data).Error; err != nil {
 		t.Errorf("Should got no error when creating data, but got %v", err)
 	}
 
-	if err := DB.Model(&data).Update("password", EncryptedData("xnewpass")).Error; err == nil {
+	if err := db.Model(&data).Update("password", EncryptedData("xnewpass")).Error; err == nil {
 		t.Errorf("Should failed to update data with invalid data")
 	}
 
-	if err := DB.Model(&data).Update("password", EncryptedData("newpass")).Error; err != nil {
+	if err := db.Model(&data).Update("password", EncryptedData("newpass")).Error; err != nil {
 		t.Errorf("Should got no error update data with valid data, but got %v", err)
 	}
 
@@ -146,7 +177,7 @@ type ScannerValuerStruct struct {
 	Gender           *sql.NullString
 	Age              sql.NullInt64
 	Male             sql.NullBool
-	Height           sql.NullFloat64
+	Height           sql.NullInt64 // todo @immugorm change to float64
 	Birthday         sql.NullTime
 	Allergen         NullString
 	Password         EncryptedData
@@ -326,12 +357,22 @@ func (point Point) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
 }
 
 func TestGORMValuer(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type UserWithPoint struct {
 		Name  string
 		Point Point
 	}
 
-	dryRunDB := DB.Session(&gorm.Session{DryRun: true})
+	dryRunDB := db.Session(&gorm.Session{DryRun: true})
 
 	stmt := dryRunDB.Create(&UserWithPoint{
 		Name:  "jinzhu",

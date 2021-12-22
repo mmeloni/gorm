@@ -1,6 +1,8 @@
 package tests_test
 
 import (
+	"gorm.io/gorm"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,10 +70,10 @@ func GetUser(name string, config Config) *User {
 	return &user
 }
 
-func CheckPet(t *testing.T, pet Pet, expect Pet) {
+func CheckPet(t *testing.T, pet Pet, expect Pet, db *gorm.DB) {
 	if pet.ID != 0 {
 		var newPet Pet
-		if err := DB.Where("id = ?", pet.ID).First(&newPet).Error; err != nil {
+		if err := db.Where("id = ?", pet.ID).First(&newPet).Error; err != nil {
 			t.Fatalf("errors happened when query: %v", err)
 		} else {
 			AssertObjEqual(t, newPet, pet, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "UserID", "Name")
@@ -87,10 +89,10 @@ func CheckPet(t *testing.T, pet Pet, expect Pet) {
 	}
 }
 
-func CheckUser(t *testing.T, user User, expect User) {
+func CheckUser(t *testing.T, user User, expect User, db *gorm.DB) {
 	if user.ID != 0 {
 		var newUser User
-		if err := DB.Where("id = ?", user.ID).First(&newUser).Error; err != nil {
+		if err := db.Where("id = ?", user.ID).First(&newUser).Error; err != nil {
 			t.Fatalf("errors happened when query: %v", err)
 		} else {
 			AssertObjEqual(t, newUser, user, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "Name", "Age", "Birthday", "CompanyID", "ManagerID", "Active")
@@ -100,6 +102,7 @@ func CheckUser(t *testing.T, user User, expect User) {
 	AssertObjEqual(t, user, expect, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "Name", "Age", "Birthday", "CompanyID", "ManagerID", "Active")
 
 	t.Run("Account", func(t *testing.T) {
+
 		AssertObjEqual(t, user.Account, expect.Account, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "UserID", "Number")
 
 		if user.Account.Number != "" {
@@ -107,13 +110,14 @@ func CheckUser(t *testing.T, user User, expect User) {
 				t.Errorf("Account's foreign key should be saved")
 			} else {
 				var account Account
-				DB.First(&account, "user_id = ?", user.ID)
+				db.First(&account, "user_id = ?", user.ID)
 				AssertObjEqual(t, account, user.Account, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "UserID", "Number")
 			}
 		}
 	})
 
 	t.Run("Pets", func(t *testing.T) {
+
 		if len(user.Pets) != len(expect.Pets) {
 			t.Fatalf("pets should equal, expect: %v, got %v", len(expect.Pets), len(user.Pets))
 		}
@@ -130,12 +134,13 @@ func CheckUser(t *testing.T, user User, expect User) {
 			if pet == nil || expect.Pets[idx] == nil {
 				t.Errorf("pets#%v should equal, expect: %v, got %v", idx, expect.Pets[idx], pet)
 			} else {
-				CheckPet(t, *pet, *expect.Pets[idx])
+				CheckPet(t, *pet, *expect.Pets[idx], db)
 			}
 		}
 	})
 
 	t.Run("Toys", func(t *testing.T) {
+
 		if len(user.Toys) != len(expect.Toys) {
 			t.Fatalf("toys should equal, expect: %v, got %v", len(expect.Toys), len(user.Toys))
 		}
@@ -162,12 +167,22 @@ func CheckUser(t *testing.T, user User, expect User) {
 	})
 
 	t.Run("Manager", func(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 		if user.Manager != nil {
 			if user.ManagerID == nil {
 				t.Errorf("Manager's foreign key should be saved")
 			} else {
 				var manager User
-				DB.First(&manager, "id = ?", *user.ManagerID)
+				db.First(&manager, "id = ?", *user.ManagerID)
 				AssertObjEqual(t, manager, user.Manager, "ID", "CreatedAt", "UpdatedAt", "DeletedAt", "Name", "Age", "Birthday", "CompanyID", "ManagerID", "Active")
 			}
 		} else if user.ManagerID != nil {
@@ -211,6 +226,7 @@ func CheckUser(t *testing.T, user User, expect User) {
 	})
 
 	t.Run("Friends", func(t *testing.T) {
+
 		if len(user.Friends) != len(expect.Friends) {
 			t.Fatalf("Friends should equal, expect: %v, got %v", len(expect.Friends), len(user.Friends))
 		}

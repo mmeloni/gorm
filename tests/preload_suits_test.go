@@ -3,6 +3,7 @@ package tests_test
 import (
 	"database/sql"
 	"encoding/json"
+	"os"
 	"reflect"
 	"sort"
 	"sync/atomic"
@@ -16,7 +17,17 @@ func toJSONString(v interface{}) []byte {
 	return r
 }
 
-func TestNestedPreload1(t *testing.T) {
+func _TestNestedPreload1(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -34,18 +45,18 @@ func TestNestedPreload1(t *testing.T) {
 			Level2 Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
 	want := Level3{Level2: Level2{Level1: Level1{Value: "value"}}}
-	if err := DB.Create(&want).Error; err != nil {
+	if err := db.Create(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2").Preload("Level2.Level1").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2").Preload("Level2.Level1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -53,12 +64,22 @@ func TestNestedPreload1(t *testing.T) {
 		t.Errorf("got %s; want %s", toJSONString(got), toJSONString(want))
 	}
 
-	if err := DB.Preload("Level2").Preload("Level2.Level1").First(&got, "name = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
+	if err := db.Preload("Level2").Preload("Level2.Level1").First(&got, "name = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
 		t.Error(err)
 	}
 }
 
-func TestNestedPreload2(t *testing.T) {
+func _TestNestedPreload2(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -76,8 +97,8 @@ func TestNestedPreload2(t *testing.T) {
 			Level2s []Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -96,12 +117,12 @@ func TestNestedPreload2(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want).Error; err != nil {
+	if err := db.Create(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2s.Level1s").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2s.Level1s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -110,7 +131,17 @@ func TestNestedPreload2(t *testing.T) {
 	}
 }
 
-func TestNestedPreload3(t *testing.T) {
+func _TestNestedPreload3(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -128,8 +159,8 @@ func TestNestedPreload3(t *testing.T) {
 			Level2s []Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -139,12 +170,12 @@ func TestNestedPreload3(t *testing.T) {
 			{Level1: Level1{Value: "value2"}},
 		},
 	}
-	if err := DB.Create(&want).Error; err != nil {
+	if err := db.Create(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2s.Level1").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2s.Level1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -153,7 +184,17 @@ func TestNestedPreload3(t *testing.T) {
 	}
 }
 
-func TestNestedPreload4(t *testing.T) {
+func _TestNestedPreload4(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -171,8 +212,8 @@ func TestNestedPreload4(t *testing.T) {
 			Level2 Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -184,12 +225,12 @@ func TestNestedPreload4(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want).Error; err != nil {
+	if err := db.Create(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -199,7 +240,17 @@ func TestNestedPreload4(t *testing.T) {
 }
 
 // Slice: []Level3
-func TestNestedPreload5(t *testing.T) {
+func _TestNestedPreload5(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -217,23 +268,23 @@ func TestNestedPreload5(t *testing.T) {
 			Level2 Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
 	want := make([]Level3, 2)
 	want[0] = Level3{Level2: Level2{Level1: Level1{Value: "value"}}}
-	if err := DB.Create(&want[0]).Error; err != nil {
+	if err := db.Create(&want[0]).Error; err != nil {
 		t.Error(err)
 	}
 	want[1] = Level3{Level2: Level2{Level1: Level1{Value: "value2"}}}
-	if err := DB.Create(&want[1]).Error; err != nil {
+	if err := db.Create(&want[1]).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got []Level3
-	if err := DB.Preload("Level2").Preload("Level2.Level1").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2").Preload("Level2.Level1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -242,7 +293,17 @@ func TestNestedPreload5(t *testing.T) {
 	}
 }
 
-func TestNestedPreload6(t *testing.T) {
+func _TestNestedPreload6(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -260,8 +321,8 @@ func TestNestedPreload6(t *testing.T) {
 			Level2s []Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -281,7 +342,7 @@ func TestNestedPreload6(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[0]).Error; err != nil {
+	if err := db.Create(&want[0]).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -300,12 +361,12 @@ func TestNestedPreload6(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[1]).Error; err != nil {
+	if err := db.Create(&want[1]).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got []Level3
-	if err := DB.Preload("Level2s.Level1s").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2s.Level1s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -314,7 +375,17 @@ func TestNestedPreload6(t *testing.T) {
 	}
 }
 
-func TestNestedPreload7(t *testing.T) {
+func _TestNestedPreload7(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -332,8 +403,8 @@ func TestNestedPreload7(t *testing.T) {
 			Level2s []Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -344,7 +415,7 @@ func TestNestedPreload7(t *testing.T) {
 			{Level1: Level1{Value: "value2"}},
 		},
 	}
-	if err := DB.Create(&want[0]).Error; err != nil {
+	if err := db.Create(&want[0]).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -354,12 +425,12 @@ func TestNestedPreload7(t *testing.T) {
 			{Level1: Level1{Value: "value4"}},
 		},
 	}
-	if err := DB.Create(&want[1]).Error; err != nil {
+	if err := db.Create(&want[1]).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got []Level3
-	if err := DB.Preload("Level2s.Level1").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2s.Level1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -368,7 +439,17 @@ func TestNestedPreload7(t *testing.T) {
 	}
 }
 
-func TestNestedPreload8(t *testing.T) {
+func _TestNestedPreload8(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID       uint
@@ -386,8 +467,8 @@ func TestNestedPreload8(t *testing.T) {
 			Level2 Level2
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -400,7 +481,7 @@ func TestNestedPreload8(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[0]).Error; err != nil {
+	if err := db.Create(&want[0]).Error; err != nil {
 		t.Error(err)
 	}
 	want[1] = Level3{
@@ -411,12 +492,12 @@ func TestNestedPreload8(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[1]).Error; err != nil {
+	if err := db.Create(&want[1]).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got []Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -425,7 +506,17 @@ func TestNestedPreload8(t *testing.T) {
 	}
 }
 
-func TestNestedPreload9(t *testing.T) {
+func _TestNestedPreload9(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level0 struct {
 			ID       uint
@@ -456,8 +547,8 @@ func TestNestedPreload9(t *testing.T) {
 			Level2_1 Level2_1
 		}
 	)
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level2_1{}, &Level0{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}, &Level2_1{}, &Level0{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level2_1{}, &Level0{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}, &Level2_1{}, &Level0{}); err != nil {
 		t.Error(err)
 	}
 
@@ -482,7 +573,7 @@ func TestNestedPreload9(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[0]).Error; err != nil {
+	if err := db.Create(&want[0]).Error; err != nil {
 		t.Error(err)
 	}
 	want[1] = Level3{
@@ -505,12 +596,12 @@ func TestNestedPreload9(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Create(&want[1]).Error; err != nil {
+	if err := db.Create(&want[1]).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got []Level3
-	if err := DB.Preload("Level2").Preload("Level2.Level1s").Preload("Level2_1").Preload("Level2_1.Level1s").Preload("Level2_1.Level1s.Level0s").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2").Preload("Level2.Level1s").Preload("Level2_1").Preload("Level2_1.Level1s").Preload("Level2_1.Level1s.Level0s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -539,14 +630,24 @@ type LevelA3 struct {
 	LevelA2   *LevelA2
 }
 
-func TestNestedPreload10(t *testing.T) {
-	DB.Migrator().DropTable(&LevelA3{}, &LevelA2{}, &LevelA1{})
-	if err := DB.AutoMigrate(&LevelA1{}, &LevelA2{}, &LevelA3{}); err != nil {
+func _TestNestedPreload10(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&LevelA3{}, &LevelA2{}, &LevelA1{})
+	if err := db.AutoMigrate(&LevelA1{}, &LevelA2{}, &LevelA3{}); err != nil {
 		t.Error(err)
 	}
 
 	levelA1 := &LevelA1{Value: "foo"}
-	if err := DB.Save(levelA1).Error; err != nil {
+	if err := db.Save(levelA1).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -566,13 +667,13 @@ func TestNestedPreload10(t *testing.T) {
 		},
 	}
 	for _, levelA2 := range want {
-		if err := DB.Save(levelA2).Error; err != nil {
+		if err := db.Save(levelA2).Error; err != nil {
 			t.Error(err)
 		}
 	}
 
 	var got []*LevelA2
-	if err := DB.Preload("LevelA3s.LevelA1").Find(&got).Error; err != nil {
+	if err := db.Preload("LevelA3s.LevelA1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -600,14 +701,24 @@ type LevelB3 struct {
 	LevelB2s  []*LevelB2 `gorm:"many2many:levelb1_levelb3_levelb2s" json:",omitempty"`
 }
 
-func TestNestedPreload11(t *testing.T) {
-	DB.Migrator().DropTable(&LevelB3{}, &LevelB2{}, &LevelB1{})
-	if err := DB.AutoMigrate(&LevelB1{}, &LevelB2{}, &LevelB3{}); err != nil {
+func _TestNestedPreload11(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&LevelB3{}, &LevelB2{}, &LevelB1{})
+	if err := db.AutoMigrate(&LevelB1{}, &LevelB2{}, &LevelB3{}); err != nil {
 		t.Error(err)
 	}
 
 	levelB1 := &LevelB1{Value: "foo"}
-	if err := DB.Create(levelB1).Error; err != nil {
+	if err := db.Create(levelB1).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -616,14 +727,14 @@ func TestNestedPreload11(t *testing.T) {
 		LevelB1ID: sql.NullInt64{Valid: true, Int64: int64(levelB1.ID)},
 		LevelB2s:  []*LevelB2{},
 	}
-	if err := DB.Create(levelB3).Error; err != nil {
+	if err := db.Create(levelB3).Error; err != nil {
 		t.Error(err)
 	}
 	levelB1.LevelB3s = []*LevelB3{levelB3}
 
 	want := []*LevelB1{levelB1}
 	var got []*LevelB1
-	if err := DB.Preload("LevelB3s.LevelB2s").Find(&got).Error; err != nil {
+	if err := db.Preload("LevelB3s.LevelB2s").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -651,9 +762,19 @@ type LevelC3 struct {
 	LevelC2   LevelC2
 }
 
-func TestNestedPreload12(t *testing.T) {
-	DB.Migrator().DropTable(&LevelC3{}, &LevelC2{}, &LevelC1{})
-	if err := DB.AutoMigrate(&LevelC1{}, &LevelC2{}, &LevelC3{}); err != nil {
+func _TestNestedPreload12(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db.Migrator().DropTable(&LevelC3{}, &LevelC2{}, &LevelC1{})
+	if err := db.AutoMigrate(&LevelC1{}, &LevelC2{}, &LevelC3{}); err != nil {
 		t.Error(err)
 	}
 
@@ -663,7 +784,7 @@ func TestNestedPreload12(t *testing.T) {
 			Value: "c1",
 		},
 	}
-	DB.Create(&level2)
+	db.Create(&level2)
 
 	want := []LevelC3{
 		{
@@ -676,13 +797,13 @@ func TestNestedPreload12(t *testing.T) {
 	}
 
 	for i := range want {
-		if err := DB.Create(&want[i]).Error; err != nil {
+		if err := db.Create(&want[i]).Error; err != nil {
 			t.Error(err)
 		}
 	}
 
 	var got []LevelC3
-	if err := DB.Preload("LevelC2").Preload("LevelC2.LevelC1").Find(&got).Error; err != nil {
+	if err := db.Preload("LevelC2").Preload("LevelC2.LevelC1").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -691,8 +812,18 @@ func TestNestedPreload12(t *testing.T) {
 	}
 }
 
-func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
-	if name := DB.Dialector.Name(); name == "sqlite" || name == "sqlserver" {
+func _TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if name := db.Dialector.Name(); name == "sqlite" || name == "sqlserver" {
 		t.Skip("skip sqlite, sqlserver due to it doesn't support multiple primary keys with auto increment")
 	}
 
@@ -710,10 +841,10 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level2{}, &Level1{})
-	DB.Migrator().DropTable("levels")
+	db.Migrator().DropTable(&Level2{}, &Level1{})
+	db.Migrator().DropTable("levels")
 
-	if err := DB.AutoMigrate(&Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -721,7 +852,7 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 		{Value: "ru", LanguageCode: "ru"},
 		{Value: "en", LanguageCode: "en"},
 	}}
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -729,12 +860,12 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 		{Value: "zh", LanguageCode: "zh"},
 		{Value: "de", LanguageCode: "de"},
 	}}
-	if err := DB.Save(&want2).Error; err != nil {
+	if err := db.Save(&want2).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level2
-	if err := DB.Preload("Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -743,7 +874,7 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 	}
 
 	var got2 Level2
-	if err := DB.Preload("Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -752,7 +883,7 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 	}
 
 	var got3 []Level2
-	if err := DB.Preload("Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -761,14 +892,14 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 	}
 
 	var got4 []Level2
-	if err := DB.Preload("Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
 	var ruLevel1 Level1
 	var zhLevel1 Level1
-	DB.First(&ruLevel1, "value = ?", "ru")
-	DB.First(&zhLevel1, "value = ?", "zh")
+	db.First(&ruLevel1, "value = ?", "ru")
+	db.First(&zhLevel1, "value = ?", "zh")
 
 	got.Level1s = []Level1{ruLevel1}
 	got2.Level1s = []Level1{zhLevel1}
@@ -776,12 +907,22 @@ func TestManyToManyPreloadWithMultiPrimaryKeys(t *testing.T) {
 		t.Errorf("got %s; want %s", toJSONString(got4), toJSONString([]Level2{got, got2}))
 	}
 
-	if err := DB.Preload("Level1s").Find(&got4, "value IN (?)", []string{"non-existing"}).Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got4, "value IN (?)", []string{"non-existing"}).Error; err != nil {
 		t.Error(err)
 	}
 }
 
-func TestManyToManyPreloadForNestedPointer(t *testing.T) {
+func _TestManyToManyPreloadForNestedPointer(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -800,10 +941,10 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	DB.Migrator().DropTable("levels")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	db.Migrator().DropTable("levels")
 
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -817,7 +958,7 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -831,12 +972,12 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Save(&want2).Error; err != nil {
+	if err := db.Save(&want2).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -845,7 +986,7 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 	}
 
 	var got2 Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -854,7 +995,7 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 	}
 
 	var got3 []Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -863,17 +1004,17 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 	}
 
 	var got4 []Level3
-	if err := DB.Preload("Level2.Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level2.Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got5 Level3
-	DB.Preload("Level2.Level1s").Find(&got5, "value = ?", "bogus")
+	db.Preload("Level2.Level1s").Find(&got5, "value = ?", "bogus")
 
 	var ruLevel1 Level1
 	var zhLevel1 Level1
-	DB.First(&ruLevel1, "value = ?", "ru")
-	DB.First(&zhLevel1, "value = ?", "zh")
+	db.First(&ruLevel1, "value = ?", "ru")
+	db.First(&zhLevel1, "value = ?", "zh")
 
 	got.Level2.Level1s = []*Level1{&ruLevel1}
 	got2.Level2.Level1s = []*Level1{&zhLevel1}
@@ -882,7 +1023,17 @@ func TestManyToManyPreloadForNestedPointer(t *testing.T) {
 	}
 }
 
-func TestNestedManyToManyPreload(t *testing.T) {
+func _TestNestedManyToManyPreload(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -900,9 +1051,9 @@ func TestNestedManyToManyPreload(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, "level1_level2", "level2_level3")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, "level1_level2", "level2_level3")
 
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -925,12 +1076,12 @@ func TestNestedManyToManyPreload(t *testing.T) {
 		},
 	}
 
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2s").Preload("Level2s.Level1s").Find(&got, "value = ?", "Level3").Error; err != nil {
+	if err := db.Preload("Level2s").Preload("Level2s.Level1s").Find(&got, "value = ?", "Level3").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -938,12 +1089,22 @@ func TestNestedManyToManyPreload(t *testing.T) {
 		t.Errorf("got %s; want %s", toJSONString(got), toJSONString(want))
 	}
 
-	if err := DB.Preload("Level2s.Level1s").First(&got, "value = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
+	if err := db.Preload("Level2s.Level1s").First(&got, "value = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
 		t.Error(err)
 	}
 }
 
-func TestNestedManyToManyPreload2(t *testing.T) {
+func _TestNestedManyToManyPreload2(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -962,10 +1123,10 @@ func TestNestedManyToManyPreload2(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	DB.Migrator().DropTable("level1_level2")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	db.Migrator().DropTable("level1_level2")
 
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -980,12 +1141,12 @@ func TestNestedManyToManyPreload2(t *testing.T) {
 		},
 	}
 
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level3
-	if err := DB.Preload("Level2.Level1s").Find(&got, "value = ?", "Level3").Error; err != nil {
+	if err := db.Preload("Level2.Level1s").Find(&got, "value = ?", "Level3").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -993,12 +1154,22 @@ func TestNestedManyToManyPreload2(t *testing.T) {
 		t.Errorf("got %s; want %s", toJSONString(got), toJSONString(want))
 	}
 
-	if err := DB.Preload("Level2.Level1s").First(&got, "value = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
+	if err := db.Preload("Level2.Level1s").First(&got, "value = ?", "not_found").Error; err != gorm.ErrRecordNotFound {
 		t.Error(err)
 	}
 }
 
-func TestNestedManyToManyPreload3(t *testing.T) {
+func _TestNestedManyToManyPreload3(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -1017,9 +1188,9 @@ func TestNestedManyToManyPreload3(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, "level1_level2")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, "level1_level2")
 
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -1053,13 +1224,13 @@ func TestNestedManyToManyPreload3(t *testing.T) {
 	}
 
 	for _, want := range wants {
-		if err := DB.Save(want).Error; err != nil {
+		if err := db.Save(want).Error; err != nil {
 			t.Error(err)
 		}
 	}
 
 	var gots []*Level3
-	if err := DB.Preload("Level2.Level1s", func(db *gorm.DB) *gorm.DB {
+	if err := db.Preload("Level2.Level1s", func(db *gorm.DB) *gorm.DB {
 		return db.Order("level1.id ASC")
 	}).Find(&gots).Error; err != nil {
 		t.Error(err)
@@ -1070,7 +1241,17 @@ func TestNestedManyToManyPreload3(t *testing.T) {
 	}
 }
 
-func TestNestedManyToManyPreload3ForStruct(t *testing.T) {
+func _TestNestedManyToManyPreload3ForStruct(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -1089,10 +1270,10 @@ func TestNestedManyToManyPreload3ForStruct(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	DB.Migrator().DropTable("level1_level2")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	db.Migrator().DropTable("level1_level2")
 
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -1126,13 +1307,13 @@ func TestNestedManyToManyPreload3ForStruct(t *testing.T) {
 	}
 
 	for _, want := range wants {
-		if err := DB.Save(want).Error; err != nil {
+		if err := db.Save(want).Error; err != nil {
 			t.Error(err)
 		}
 	}
 
 	var gots []*Level3
-	if err := DB.Preload("Level2.Level1s", func(db *gorm.DB) *gorm.DB {
+	if err := db.Preload("Level2.Level1s", func(db *gorm.DB) *gorm.DB {
 		return db.Order("level1.id ASC")
 	}).Find(&gots).Error; err != nil {
 		t.Error(err)
@@ -1143,7 +1324,17 @@ func TestNestedManyToManyPreload3ForStruct(t *testing.T) {
 	}
 }
 
-func TestNestedManyToManyPreload4(t *testing.T) {
+func _TestNestedManyToManyPreload4(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level4 struct {
 			ID       uint
@@ -1167,8 +1358,8 @@ func TestNestedManyToManyPreload4(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable("level1_level2", "level2_level3")
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
+	db.Migrator().DropTable("level1_level2", "level2_level3")
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
 
 	dummy := Level1{
 		Value: "Level1",
@@ -1183,21 +1374,31 @@ func TestNestedManyToManyPreload4(t *testing.T) {
 		}},
 	}
 
-	if err := DB.AutoMigrate(&Level4{}, &Level3{}, &Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level4{}, &Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
-	if err := DB.Save(&dummy).Error; err != nil {
+	if err := db.Save(&dummy).Error; err != nil {
 		t.Error(err)
 	}
 
 	var level1 Level1
-	if err := DB.Preload("Level2s").Preload("Level2s.Level3s").Preload("Level2s.Level3s.Level4s").First(&level1).Error; err != nil {
+	if err := db.Preload("Level2s").Preload("Level2s.Level3s").Preload("Level2s.Level3s.Level4s").First(&level1).Error; err != nil {
 		t.Error(err)
 	}
 }
 
-func TestManyToManyPreloadForPointer(t *testing.T) {
+func _TestManyToManyPreloadForPointer(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level1 struct {
 			ID    uint
@@ -1210,9 +1411,9 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable("levels", &Level2{}, &Level1{})
+	db.Migrator().DropTable("levels", &Level2{}, &Level1{})
 
-	if err := DB.AutoMigrate(&Level2{}, &Level1{}); err != nil {
+	if err := db.AutoMigrate(&Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -1220,7 +1421,7 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 		{Value: "ru"},
 		{Value: "en"},
 	}}
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1228,12 +1429,12 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 		{Value: "zh"},
 		{Value: "de"},
 	}}
-	if err := DB.Save(&want2).Error; err != nil {
+	if err := db.Save(&want2).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got Level2
-	if err := DB.Preload("Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got, "value = ?", "Bob").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1242,7 +1443,7 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 	}
 
 	var got2 Level2
-	if err := DB.Preload("Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got2, "value = ?", "Tom").Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1251,7 +1452,7 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 	}
 
 	var got3 []Level2
-	if err := DB.Preload("Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level1s").Find(&got3, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1260,17 +1461,17 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 	}
 
 	var got4 []Level2
-	if err := DB.Preload("Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
+	if err := db.Preload("Level1s", "value IN (?)", []string{"zh", "ru"}).Find(&got4, "value IN (?)", []string{"Bob", "Tom"}).Error; err != nil {
 		t.Error(err)
 	}
 
 	var got5 Level2
-	DB.Preload("Level1s").First(&got5, "value = ?", "bogus")
+	db.Preload("Level1s").First(&got5, "value = ?", "bogus")
 
 	var ruLevel1 Level1
 	var zhLevel1 Level1
-	DB.First(&ruLevel1, "value = ?", "ru")
-	DB.First(&zhLevel1, "value = ?", "zh")
+	db.First(&ruLevel1, "value = ?", "ru")
+	db.First(&zhLevel1, "value = ?", "zh")
 
 	got.Level1s = []*Level1{&ruLevel1}
 	got2.Level1s = []*Level1{&zhLevel1}
@@ -1279,7 +1480,17 @@ func TestManyToManyPreloadForPointer(t *testing.T) {
 	}
 }
 
-func TestNilPointerSlice(t *testing.T) {
+func _TestNilPointerSlice(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level3 struct {
 			ID    uint
@@ -1299,8 +1510,8 @@ func TestNilPointerSlice(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
-	if err := DB.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{})
+	if err := db.AutoMigrate(&Level3{}, &Level2{}, &Level1{}); err != nil {
 		t.Error(err)
 	}
 
@@ -1313,7 +1524,7 @@ func TestNilPointerSlice(t *testing.T) {
 			},
 		},
 	}
-	if err := DB.Save(&want).Error; err != nil {
+	if err := db.Save(&want).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1321,12 +1532,12 @@ func TestNilPointerSlice(t *testing.T) {
 		Value:  "Tom",
 		Level2: nil,
 	}
-	if err := DB.Save(&want2).Error; err != nil {
+	if err := db.Save(&want2).Error; err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 
 	var got []Level1
-	if err := DB.Preload("Level2").Preload("Level2.Level3").Find(&got).Error; err != nil {
+	if err := db.Preload("Level2").Preload("Level2.Level3").Find(&got).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1343,7 +1554,17 @@ func TestNilPointerSlice(t *testing.T) {
 	}
 }
 
-func TestNilPointerSlice2(t *testing.T) {
+func _TestNilPointerSlice2(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level4 struct {
 			ID uint
@@ -1364,19 +1585,19 @@ func TestNilPointerSlice2(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
 
-	if err := DB.AutoMigrate(new(Level4), new(Level3), new(Level2), new(Level1)); err != nil {
+	if err := db.AutoMigrate(new(Level4), new(Level3), new(Level2), new(Level1)); err != nil {
 		t.Error(err)
 	}
 
 	want := new(Level1)
-	if err := DB.Save(want).Error; err != nil {
+	if err := db.Save(want).Error; err != nil {
 		t.Error(err)
 	}
 
 	got := new(Level1)
-	err := DB.Preload("Level2.Level3s.Level4").Last(&got).Error
+	err = db.Preload("Level2.Level3s.Level4").Last(&got).Error
 	if err != nil {
 		t.Error(err)
 	}
@@ -1386,7 +1607,17 @@ func TestNilPointerSlice2(t *testing.T) {
 	}
 }
 
-func TestPrefixedPreloadDuplication(t *testing.T) {
+func _TestPrefixedPreloadDuplication(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level4 struct {
 			ID       uint
@@ -1412,23 +1643,23 @@ func TestPrefixedPreloadDuplication(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
+	db.Migrator().DropTable(&Level3{}, &Level2{}, &Level1{}, &Level4{})
 
-	if err := DB.AutoMigrate(new(Level3), new(Level4), new(Level2), new(Level1)); err != nil {
+	if err := db.AutoMigrate(new(Level3), new(Level4), new(Level2), new(Level1)); err != nil {
 		t.Error(err)
 	}
 
 	lvl := &Level3{}
-	if err := DB.Save(lvl).Error; err != nil {
+	if err := db.Save(lvl).Error; err != nil {
 		t.Error(err)
 	}
 
 	sublvl1 := &Level4{Level3ID: lvl.ID}
-	if err := DB.Save(sublvl1).Error; err != nil {
+	if err := db.Save(sublvl1).Error; err != nil {
 		t.Error(err)
 	}
 	sublvl2 := &Level4{Level3ID: lvl.ID}
-	if err := DB.Save(sublvl2).Error; err != nil {
+	if err := db.Save(sublvl2).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1439,7 +1670,7 @@ func TestPrefixedPreloadDuplication(t *testing.T) {
 			Level3: lvl,
 		},
 	}
-	if err := DB.Save(&want1).Error; err != nil {
+	if err := db.Save(&want1).Error; err != nil {
 		t.Error(err)
 	}
 
@@ -1448,14 +1679,14 @@ func TestPrefixedPreloadDuplication(t *testing.T) {
 			Level3: lvl,
 		},
 	}
-	if err := DB.Save(&want2).Error; err != nil {
+	if err := db.Save(&want2).Error; err != nil {
 		t.Error(err)
 	}
 
 	want := []Level1{want1, want2}
 
 	var got []Level1
-	err := DB.Preload("Level2.Level3.Level4s").Find(&got).Error
+	err = db.Preload("Level2.Level3.Level4s").Find(&got).Error
 	if err != nil {
 		t.Error(err)
 	}
@@ -1471,7 +1702,17 @@ func TestPrefixedPreloadDuplication(t *testing.T) {
 	}
 }
 
-func TestPreloadManyToManyCallbacks(t *testing.T) {
+func _TestPreloadManyToManyCallbacks(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type (
 		Level2 struct {
 			ID   uint
@@ -1484,9 +1725,9 @@ func TestPreloadManyToManyCallbacks(t *testing.T) {
 		}
 	)
 
-	DB.Migrator().DropTable("level1_level2s", &Level2{}, &Level1{})
+	db.Migrator().DropTable("level1_level2s", &Level2{}, &Level1{})
 
-	if err := DB.AutoMigrate(new(Level1), new(Level2)); err != nil {
+	if err := db.AutoMigrate(new(Level1), new(Level2)); err != nil {
 		t.Error(err)
 	}
 
@@ -1496,14 +1737,14 @@ func TestPreloadManyToManyCallbacks(t *testing.T) {
 			{Name: "l2-1"}, {Name: "l2-2"},
 		},
 	}
-	DB.Save(&lvl)
+	db.Save(&lvl)
 
 	var called int64
-	DB.Callback().Query().After("gorm:query").Register("TestPreloadManyToManyCallbacks", func(_ *gorm.DB) {
+	db.Callback().Query().After("gorm:query").Register("_TestPreloadManyToManyCallbacks", func(_ *gorm.DB) {
 		atomic.AddInt64(&called, 1)
 	})
 
-	DB.Preload("Level2s").First(&Level1{}, "id = ?", lvl.ID)
+	db.Preload("Level2s").First(&Level1{}, "id = ?", lvl.ID)
 
 	if called != 3 {
 		t.Errorf("Wanted callback to be called 3 times but got %d", called)

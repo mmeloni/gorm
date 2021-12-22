@@ -2,6 +2,7 @@ package tests_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -10,7 +11,17 @@ import (
 )
 
 func TestPreparedStmt(t *testing.T) {
-	tx := DB.Session(&gorm.Session{PrepareStmt: true})
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	tx := db.Session(&gorm.Session{PrepareStmt: true})
 
 	if _, ok := tx.ConnPool.(*gorm.PreparedStmtDB); !ok {
 		t.Fatalf("should assign PreparedStatement Manager back to database when using PrepareStmt mode")
@@ -52,7 +63,17 @@ func TestPreparedStmt(t *testing.T) {
 }
 
 func TestPreparedStmtFromTransaction(t *testing.T) {
-	db := DB.Session(&gorm.Session{PrepareStmt: true, SkipDefaultTransaction: true})
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	db = db.Session(&gorm.Session{PrepareStmt: true, SkipDefaultTransaction: true})
 
 	tx := db.Begin()
 	defer func() {

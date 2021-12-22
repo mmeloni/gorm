@@ -2,6 +2,7 @@ package tests_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"gorm.io/gorm"
@@ -23,31 +24,41 @@ func NameIn(names []string) func(d *gorm.DB) *gorm.DB {
 }
 
 func TestScopes(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []*User{
 		GetUser("ScopeUser1", Config{}),
 		GetUser("ScopeUser2", Config{}),
 		GetUser("ScopeUser3", Config{}),
 	}
 
-	DB.Create(&users)
+	db.Create(&users)
 
 	var users1, users2, users3 []User
-	DB.Scopes(NameIn1And2).Find(&users1)
+	db.Scopes(NameIn1And2).Find(&users1)
 	if len(users1) != 2 {
 		t.Errorf("Should found two users's name in 1, 2, but got %v", len(users1))
 	}
 
-	DB.Scopes(NameIn1And2, NameIn2And3).Find(&users2)
+	db.Scopes(NameIn1And2, NameIn2And3).Find(&users2)
 	if len(users2) != 1 {
 		t.Errorf("Should found one user's name is 2, but got %v", len(users2))
 	}
 
-	DB.Scopes(NameIn([]string{users[0].Name, users[2].Name})).Find(&users3)
+	db.Scopes(NameIn([]string{users[0].Name, users[2].Name})).Find(&users3)
 	if len(users3) != 2 {
 		t.Errorf("Should found two users's name in 1, 3, but got %v", len(users3))
 	}
 
-	db := DB.Scopes(func(tx *gorm.DB) *gorm.DB {
+	db = db.Scopes(func(tx *gorm.DB) *gorm.DB {
 		return tx.Table("custom_table")
 	}).Session(&gorm.Session{})
 
@@ -56,7 +67,7 @@ func TestScopes(t *testing.T) {
 		t.Errorf("failed to call Scopes")
 	}
 
-	result := DB.Scopes(NameIn1And2, func(tx *gorm.DB) *gorm.DB {
+	result := db.Scopes(NameIn1And2, func(tx *gorm.DB) *gorm.DB {
 		return tx.Session(&gorm.Session{})
 	}).Find(&users1)
 
@@ -68,7 +79,7 @@ func TestScopes(t *testing.T) {
 	userTable := func(db *gorm.DB) *gorm.DB {
 		return db.WithContext(context.Background()).Table("users")
 	}
-	if err := DB.Scopes(userTable).Select("max(id)").Scan(&maxId).Error; err != nil {
+	if err := db.Scopes(userTable).Select("max(id)").Scan(&maxId).Error; err != nil {
 		t.Errorf("select max(id)")
 	}
 }

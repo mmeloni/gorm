@@ -2,6 +2,7 @@ package tests_test
 
 import (
 	"errors"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -13,9 +14,19 @@ import (
 )
 
 func TestCreate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user = *GetUser("create", Config{})
 
-	if results := DB.Create(&user); results.Error != nil {
+	if results := db.Create(&user); results.Error != nil {
 		t.Fatalf("errors happened when create: %v", results.Error)
 	} else if results.RowsAffected != 1 {
 		t.Fatalf("rows affected expects: %v, got %v", 1, results.RowsAffected)
@@ -34,14 +45,24 @@ func TestCreate(t *testing.T) {
 	}
 
 	var newUser User
-	if err := DB.Where("id = ?", user.ID).First(&newUser).Error; err != nil {
+	if err := db.Where("id = ?", user.ID).First(&newUser).Error; err != nil {
 		t.Fatalf("errors happened when query: %v", err)
 	} else {
-		CheckUser(t, newUser, user)
+		CheckUser(t, newUser, user, db)
 	}
 }
 
 func TestCreateInBatches(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []User{
 		*GetUser("create_in_batches_1", Config{Account: true, Pets: 2, Toys: 3, Company: true, Manager: true, Team: 0, Languages: 1, Friends: 1}),
 		*GetUser("create_in_batches_2", Config{Account: false, Pets: 2, Toys: 4, Company: false, Manager: false, Team: 1, Languages: 3, Friends: 5}),
@@ -51,7 +72,7 @@ func TestCreateInBatches(t *testing.T) {
 		*GetUser("create_in_batches_6", Config{Account: true, Pets: 4, Toys: 3, Company: false, Manager: true, Team: 1, Languages: 3, Friends: 0}),
 	}
 
-	result := DB.CreateInBatches(&users, 2)
+	result := db.CreateInBatches(&users, 2)
 	if result.RowsAffected != int64(len(users)) {
 		t.Errorf("affected rows should be %v, but got %v", len(users), result.RowsAffected)
 	}
@@ -61,16 +82,26 @@ func TestCreateInBatches(t *testing.T) {
 			t.Fatalf("failed to fill user's ID, got %v", user.ID)
 		} else {
 			var newUser User
-			if err := DB.Where("id = ?", user.ID).Preload(clause.Associations).First(&newUser).Error; err != nil {
+			if err := db.Where("id = ?", user.ID).Preload(clause.Associations).First(&newUser).Error; err != nil {
 				t.Fatalf("errors happened when query: %v", err)
 			} else {
-				CheckUser(t, newUser, user)
+				CheckUser(t, newUser, user, db)
 			}
 		}
 	}
 }
 
 func TestCreateInBatchesWithDefaultSize(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []User{
 		*GetUser("create_with_default_batch_size_1", Config{Account: true, Pets: 2, Toys: 3, Company: true, Manager: true, Team: 0, Languages: 1, Friends: 1}),
 		*GetUser("create_with_default_batch_sizs_2", Config{Account: false, Pets: 2, Toys: 4, Company: false, Manager: false, Team: 1, Languages: 3, Friends: 5}),
@@ -80,7 +111,7 @@ func TestCreateInBatchesWithDefaultSize(t *testing.T) {
 		*GetUser("create_with_default_batch_sizs_6", Config{Account: true, Pets: 4, Toys: 3, Company: false, Manager: true, Team: 1, Languages: 3, Friends: 0}),
 	}
 
-	result := DB.Session(&gorm.Session{CreateBatchSize: 2}).Create(&users)
+	result := db.Session(&gorm.Session{CreateBatchSize: 2}).Create(&users)
 	if result.RowsAffected != int64(len(users)) {
 		t.Errorf("affected rows should be %v, but got %v", len(users), result.RowsAffected)
 	}
@@ -90,31 +121,41 @@ func TestCreateInBatchesWithDefaultSize(t *testing.T) {
 			t.Fatalf("failed to fill user's ID, got %v", user.ID)
 		} else {
 			var newUser User
-			if err := DB.Where("id = ?", user.ID).Preload(clause.Associations).First(&newUser).Error; err != nil {
+			if err := db.Where("id = ?", user.ID).Preload(clause.Associations).First(&newUser).Error; err != nil {
 				t.Fatalf("errors happened when query: %v", err)
 			} else {
-				CheckUser(t, newUser, user)
+				CheckUser(t, newUser, user, db)
 			}
 		}
 	}
 }
 
 func TestCreateFromMap(t *testing.T) {
-	if err := DB.Model(&User{}).Create(map[string]interface{}{"Name": "create_from_map", "Age": 18}).Error; err != nil {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if err := db.Model(&User{}).Create(map[string]interface{}{"Name": "create_from_map", "Age": 18}).Error; err != nil {
 		t.Fatalf("failed to create data from map, got error: %v", err)
 	}
 
 	var result User
-	if err := DB.Where("name = ?", "create_from_map").First(&result).Error; err != nil || result.Age != 18 {
+	if err := db.Where("name = ?", "create_from_map").First(&result).Error; err != nil || result.Age != 18 {
 		t.Fatalf("failed to create from map, got error %v", err)
 	}
 
-	if err := DB.Model(&User{}).Create(map[string]interface{}{"name": "create_from_map_1", "age": 18}).Error; err != nil {
+	if err := db.Model(&User{}).Create(map[string]interface{}{"name": "create_from_map_1", "age": 18}).Error; err != nil {
 		t.Fatalf("failed to create data from map, got error: %v", err)
 	}
 
 	var result1 User
-	if err := DB.Where("name = ?", "create_from_map_1").First(&result1).Error; err != nil || result1.Age != 18 {
+	if err := db.Where("name = ?", "create_from_map_1").First(&result1).Error; err != nil || result1.Age != 18 {
 		t.Fatalf("failed to create from map, got error %v", err)
 	}
 
@@ -123,22 +164,32 @@ func TestCreateFromMap(t *testing.T) {
 		{"name": "create_from_map_3", "Age": 20},
 	}
 
-	if err := DB.Model(&User{}).Create(datas).Error; err != nil {
+	if err := db.Model(&User{}).Create(datas).Error; err != nil {
 		t.Fatalf("failed to create data from slice of map, got error: %v", err)
 	}
 
 	var result2 User
-	if err := DB.Where("name = ?", "create_from_map_2").First(&result2).Error; err != nil || result2.Age != 19 {
+	if err := db.Where("name = ?", "create_from_map_2").First(&result2).Error; err != nil || result2.Age != 19 {
 		t.Fatalf("failed to query data after create from slice of map, got error %v", err)
 	}
 
 	var result3 User
-	if err := DB.Where("name = ?", "create_from_map_3").First(&result3).Error; err != nil || result3.Age != 20 {
+	if err := db.Where("name = ?", "create_from_map_3").First(&result3).Error; err != nil || result3.Age != 20 {
 		t.Fatalf("failed to query data after create from slice of map, got error %v", err)
 	}
 }
 
 func TestCreateWithAssociations(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user = *GetUser("create_with_associations", Config{
 		Account:   true,
 		Pets:      2,
@@ -150,18 +201,28 @@ func TestCreateWithAssociations(t *testing.T) {
 		Friends:   1,
 	})
 
-	if err := DB.Create(&user).Error; err != nil {
+	if err := db.Create(&user).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
-	CheckUser(t, user, user)
+	CheckUser(t, user, user, db)
 
 	var user2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&user2, "id = ?", user.ID)
-	CheckUser(t, user2, user)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&user2, "id = ?", user.ID)
+	CheckUser(t, user2, user, db)
 }
 
 func TestBulkCreateWithAssociations(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []User{
 		*GetUser("bulk_1", Config{Account: true, Pets: 2, Toys: 3, Company: true, Manager: true, Team: 0, Languages: 1, Friends: 1}),
 		*GetUser("bulk_2", Config{Account: false, Pets: 2, Toys: 4, Company: false, Manager: false, Team: 1, Languages: 3, Friends: 5}),
@@ -173,7 +234,7 @@ func TestBulkCreateWithAssociations(t *testing.T) {
 		*GetUser("bulk_8", Config{Account: false, Pets: 0, Toys: 0, Company: false, Manager: false, Team: 0, Languages: 0, Friends: 0}),
 	}
 
-	if results := DB.Create(&users); results.Error != nil {
+	if results := db.Create(&users); results.Error != nil {
 		t.Fatalf("errors happened when create: %v", results.Error)
 	} else if results.RowsAffected != int64(len(users)) {
 		t.Fatalf("rows affected expects: %v, got %v", len(users), results.RowsAffected)
@@ -182,17 +243,27 @@ func TestBulkCreateWithAssociations(t *testing.T) {
 	var userIDs []uint
 	for _, user := range users {
 		userIDs = append(userIDs, user.ID)
-		CheckUser(t, user, user)
+		CheckUser(t, user, user, db)
 	}
 
 	var users2 []User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&users2, "id IN ?", userIDs)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&users2, "id IN ?", userIDs)
 	for idx, user := range users2 {
-		CheckUser(t, user, users[idx])
+		CheckUser(t, user, users[idx], db)
 	}
 }
 
 func TestBulkCreatePtrDataWithAssociations(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []*User{
 		GetUser("bulk_ptr_1", Config{Account: true, Pets: 2, Toys: 3, Company: true, Manager: true, Team: 0, Languages: 1, Friends: 1}),
 		GetUser("bulk_ptr_2", Config{Account: false, Pets: 2, Toys: 4, Company: false, Manager: false, Team: 1, Languages: 3, Friends: 5}),
@@ -204,42 +275,54 @@ func TestBulkCreatePtrDataWithAssociations(t *testing.T) {
 		GetUser("bulk_ptr_8", Config{Account: false, Pets: 0, Toys: 0, Company: false, Manager: false, Team: 0, Languages: 0, Friends: 0}),
 	}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	}
 
 	var userIDs []uint
 	for _, user := range users {
 		userIDs = append(userIDs, user.ID)
-		CheckUser(t, *user, *user)
+		CheckUser(t, *user, *user, db)
 	}
 
 	var users2 []User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&users2, "id IN ?", userIDs)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").Find(&users2, "id IN ?", userIDs)
 	for idx, user := range users2 {
-		CheckUser(t, user, *users[idx])
+		CheckUser(t, user, *users[idx], db)
 	}
 }
 
 func TestPolymorphicHasOne(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	t.Run("Struct", func(t *testing.T) {
+
 		var pet = Pet{
 			Name: "PolymorphicHasOne",
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne"},
 		}
 
-		if err := DB.Create(&pet).Error; err != nil {
+		if err := db.Create(&pet).Error; err != nil {
 			t.Fatalf("errors happened when create: %v", err)
 		}
 
-		CheckPet(t, pet, pet)
+		CheckPet(t, pet, pet, db)
 
 		var pet2 Pet
-		DB.Preload("Toy").Find(&pet2, "id = ?", pet.ID)
-		CheckPet(t, pet2, pet)
+		db.Preload("Toy").Find(&pet2, "id = ?", pet.ID)
+		CheckPet(t, pet2, pet, db)
 	})
 
 	t.Run("Slice", func(t *testing.T) {
+
 		var pets = []Pet{{
 			Name: "PolymorphicHasOne-Slice-1",
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Slice-1"},
@@ -251,24 +334,25 @@ func TestPolymorphicHasOne(t *testing.T) {
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Slice-3"},
 		}}
 
-		if err := DB.Create(&pets).Error; err != nil {
+		if err := db.Create(&pets).Error; err != nil {
 			t.Fatalf("errors happened when create: %v", err)
 		}
 
 		var petIDs []uint
 		for _, pet := range pets {
 			petIDs = append(petIDs, pet.ID)
-			CheckPet(t, pet, pet)
+			CheckPet(t, pet, pet, db)
 		}
 
 		var pets2 []Pet
-		DB.Preload("Toy").Find(&pets2, "id IN ?", petIDs)
+		db.Preload("Toy").Find(&pets2, "id IN ?", petIDs)
 		for idx, pet := range pets2 {
-			CheckPet(t, pet, pets[idx])
+			CheckPet(t, pet, pets[idx], db)
 		}
 	})
 
 	t.Run("SliceOfPtr", func(t *testing.T) {
+
 		var pets = []*Pet{{
 			Name: "PolymorphicHasOne-Slice-1",
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Slice-1"},
@@ -280,16 +364,17 @@ func TestPolymorphicHasOne(t *testing.T) {
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Slice-3"},
 		}}
 
-		if err := DB.Create(&pets).Error; err != nil {
+		if err := db.Create(&pets).Error; err != nil {
 			t.Fatalf("errors happened when create: %v", err)
 		}
 
 		for _, pet := range pets {
-			CheckPet(t, *pet, *pet)
+			CheckPet(t, *pet, *pet, db)
 		}
 	})
 
 	t.Run("Array", func(t *testing.T) {
+
 		var pets = [...]Pet{{
 			Name: "PolymorphicHasOne-Array-1",
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Array-1"},
@@ -301,16 +386,17 @@ func TestPolymorphicHasOne(t *testing.T) {
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Array-3"},
 		}}
 
-		if err := DB.Create(&pets).Error; err != nil {
+		if err := db.Create(&pets).Error; err != nil {
 			t.Fatalf("errors happened when create: %v", err)
 		}
 
 		for _, pet := range pets {
-			CheckPet(t, pet, pet)
+			CheckPet(t, pet, pet, db)
 		}
 	})
 
 	t.Run("ArrayPtr", func(t *testing.T) {
+
 		var pets = [...]*Pet{{
 			Name: "PolymorphicHasOne-Array-1",
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Array-1"},
@@ -322,77 +408,127 @@ func TestPolymorphicHasOne(t *testing.T) {
 			Toy:  Toy{Name: "Toy-PolymorphicHasOne-Array-3"},
 		}}
 
-		if err := DB.Create(&pets).Error; err != nil {
+		if err := db.Create(&pets).Error; err != nil {
 			t.Fatalf("errors happened when create: %v", err)
 		}
 
 		for _, pet := range pets {
-			CheckPet(t, *pet, *pet)
+			CheckPet(t, *pet, *pet, db)
 		}
 	})
 }
 
 func TestCreateEmptyStruct(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type EmptyStruct struct {
 		ID uint
 	}
-	DB.Migrator().DropTable(&EmptyStruct{})
+	db.Migrator().DropTable(&EmptyStruct{})
 
-	if err := DB.AutoMigrate(&EmptyStruct{}); err != nil {
+	if err := db.AutoMigrate(&EmptyStruct{}); err != nil {
 		t.Errorf("no error should happen when auto migrate, but got %v", err)
 	}
 
-	if err := DB.Create(&EmptyStruct{}).Error; err != nil {
+	if err := db.Create(&EmptyStruct{}).Error; err != nil {
 		t.Errorf("No error should happen when creating user, but got %v", err)
 	}
 }
 
 func TestCreateEmptySlice(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var data = []User{}
-	if err := DB.Create(&data).Error; err != gorm.ErrEmptySlice {
+	if err := db.Create(&data).Error; err != gorm.ErrEmptySlice {
 		t.Errorf("no data should be created, got %v", err)
 	}
 
 	var sliceMap = []map[string]interface{}{}
-	if err := DB.Model(&User{}).Create(&sliceMap).Error; err != gorm.ErrEmptySlice {
+	if err := db.Model(&User{}).Create(&sliceMap).Error; err != gorm.ErrEmptySlice {
 		t.Errorf("no data should be created, got %v", err)
 	}
 }
 
 func TestCreateInvalidSlice(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []*User{
 		GetUser("invalid_slice_1", Config{}),
 		GetUser("invalid_slice_2", Config{}),
 		nil,
 	}
 
-	if err := DB.Create(&users).Error; !errors.Is(err, gorm.ErrInvalidData) {
+	if err := db.Create(&users).Error; !errors.Is(err, gorm.ErrInvalidData) {
 		t.Errorf("should returns error invalid data when creating from slice that contains invalid data")
 	}
 }
 
 func TestCreateWithExistingTimestamp(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := User{Name: "CreateUserExistingTimestamp"}
 	curTime := now.MustParse("2016-01-01")
 	user.CreatedAt = curTime
 	user.UpdatedAt = curTime
-	DB.Save(&user)
+	db.Save(&user)
 
 	AssertEqual(t, user.CreatedAt, curTime)
 	AssertEqual(t, user.UpdatedAt, curTime)
 
 	var newUser User
-	DB.First(&newUser, user.ID)
+	db.First(&newUser, user.ID)
 
 	AssertEqual(t, newUser.CreatedAt, curTime)
 	AssertEqual(t, newUser.UpdatedAt, curTime)
 }
 
 func TestCreateWithNowFuncOverride(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := User{Name: "CreateUserTimestampOverride"}
 	curTime := now.MustParse("2016-01-01")
 
-	NEW := DB.Session(&gorm.Session{
+	NEW := db.Session(&gorm.Session{
 		NowFunc: func() time.Time {
 			return curTime
 		},
@@ -411,29 +547,49 @@ func TestCreateWithNowFuncOverride(t *testing.T) {
 }
 
 func TestCreateWithNoGORMPrimaryKey(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type JoinTable struct {
 		UserID   uint
 		FriendID uint
 	}
 
-	DB.Migrator().DropTable(&JoinTable{})
-	if err := DB.AutoMigrate(&JoinTable{}); err != nil {
+	db.Migrator().DropTable(&JoinTable{})
+	if err := db.AutoMigrate(&JoinTable{}); err != nil {
 		t.Errorf("no error should happen when auto migrate, but got %v", err)
 	}
 
 	jt := JoinTable{UserID: 1, FriendID: 2}
-	err := DB.Create(&jt).Error
+	err = db.Create(&jt).Error
 	if err != nil {
 		t.Errorf("No error should happen when create a record without a GORM primary key. But in the database this primary key exists and is the union of 2 or more fields\n But got: %s", err)
 	}
 }
 
 func TestSelectWithCreate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("select_create", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Select("Account", "Toys", "Manager", "ManagerID", "Languages", "Name", "CreatedAt", "Age", "Active").Create(&user)
+	db.Select("Account", "Toys", "Manager", "ManagerID", "Languages", "Name", "CreatedAt", "Age", "Active").Create(&user)
 
 	var user2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&user2, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&user2, user.ID)
 
 	user.Birthday = nil
 	user.Pets = nil
@@ -441,28 +597,38 @@ func TestSelectWithCreate(t *testing.T) {
 	user.Team = nil
 	user.Friends = nil
 
-	CheckUser(t, user2, user)
+	CheckUser(t, user2, user, db)
 }
 
 func TestOmitWithCreate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("omit_create", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Omit("Account", "Toys", "Manager", "Birthday").Create(&user)
+	db.Omit("Account", "Toys", "Manager", "Birthday").Create(&user)
 
 	var result User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result, user.ID)
 
 	user.Birthday = nil
 	user.Account = Account{}
 	user.Toys = nil
 	user.Manager = nil
 
-	CheckUser(t, result, user)
+	CheckUser(t, result, user, db)
 
 	user2 := *GetUser("omit_create", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Omit(clause.Associations).Create(&user2)
+	db.Omit(clause.Associations).Create(&user2)
 
 	var result2 User
-	DB.Preload(clause.Associations).First(&result2, user2.ID)
+	db.Preload(clause.Associations).First(&result2, user2.ID)
 
 	user2.Account = Account{}
 	user2.Toys = nil
@@ -473,12 +639,22 @@ func TestOmitWithCreate(t *testing.T) {
 	user2.Languages = nil
 	user2.Friends = nil
 
-	CheckUser(t, result2, user2)
+	CheckUser(t, result2, user2, db)
 }
 
 func TestFirstOrCreateWithPrimaryKey(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	company := Company{ID: 100, Name: "company100_with_primarykey"}
-	DB.FirstOrCreate(&company)
+	db.FirstOrCreate(&company)
 
 	if company.ID != 100 {
 		t.Errorf("invalid primary key after creating, got %v", company.ID)
@@ -488,7 +664,7 @@ func TestFirstOrCreateWithPrimaryKey(t *testing.T) {
 		{ID: 101, Name: "company101_with_primarykey"},
 		{ID: 102, Name: "company102_with_primarykey"},
 	}
-	DB.Create(&companies)
+	db.Create(&companies)
 
 	if companies[0].ID != 101 || companies[1].ID != 102 {
 		t.Errorf("invalid primary key after creating, got %v, %v", companies[0].ID, companies[1].ID)
@@ -496,16 +672,26 @@ func TestFirstOrCreateWithPrimaryKey(t *testing.T) {
 }
 
 func TestCreateFromSubQuery(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := User{Name: "jinzhu"}
 
-	DB.Create(&user)
+	db.Create(&user)
 
-	subQuery := DB.Table("users").Where("name=?", user.Name).Select("id")
+	subQuery := db.Table("users").Where("name=?", user.Name).Select("id")
 
-	result := DB.Session(&gorm.Session{DryRun: true}).Model(&Pet{}).Create([]map[string]interface{}{
+	result := db.Session(&gorm.Session{DryRun: true}).Model(&Pet{}).Create([]map[string]interface{}{
 		{
 			"name":    "cat",
-			"user_id": gorm.Expr("(?)", DB.Table("(?) as tmp", subQuery).Select("@uid:=id")),
+			"user_id": gorm.Expr("(?)", db.Table("(?) as tmp", subQuery).Select("@uid:=id")),
 		},
 		{
 			"name":    "dog",
@@ -519,9 +705,19 @@ func TestCreateFromSubQuery(t *testing.T) {
 }
 
 func TestCreateNilPointer(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var user *User
 
-	err := DB.Create(user).Error
+	err = db.Create(user).Error
 	if err == nil || err != gorm.ErrInvalidValue {
 		t.Fatalf("it is not ErrInvalidValue")
 	}

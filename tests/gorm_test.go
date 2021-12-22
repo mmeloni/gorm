@@ -1,13 +1,24 @@
 package tests_test
 
 import (
+	"os"
 	"testing"
 
 	"gorm.io/gorm"
 )
 
 func TestReturningWithNullToZeroValues(t *testing.T) {
-	dialect := DB.Dialector.Name()
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	dialect := db.Dialector.Name()
 	switch dialect {
 	case "mysql", "sqlserver":
 		// these dialects do not support the "returning" clause
@@ -21,7 +32,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 		}
 		u1 := user{}
 
-		if results := DB.Create(&u1); results.Error != nil {
+		if results := db.Create(&u1); results.Error != nil {
 			t.Fatalf("errors happened on create: %v", results.Error)
 		} else if results.RowsAffected != 1 {
 			t.Fatalf("rows affected expects: %v, got %v", 1, results.RowsAffected)
@@ -30,7 +41,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 		}
 
 		got := user{}
-		results := DB.First(&got, "id = ?", u1.ID)
+		results := db.First(&got, "id = ?", u1.ID)
 		if results.Error != nil {
 			t.Fatalf("errors happened on first: %v", results.Error)
 		} else if results.RowsAffected != 1 {
@@ -39,7 +50,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 			t.Fatalf("first expects: %v, got %v", u1, got)
 		}
 
-		results = DB.Select("id, name").Find(&got)
+		results = db.Select("id, name").Find(&got)
 		if results.Error != nil {
 			t.Fatalf("errors happened on first: %v", results.Error)
 		} else if results.RowsAffected != 1 {
@@ -49,7 +60,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 		}
 
 		u1.Name = "jinzhu"
-		if results := DB.Save(&u1); results.Error != nil {
+		if results := db.Save(&u1); results.Error != nil {
 			t.Fatalf("errors happened on update: %v", results.Error)
 		} else if results.RowsAffected != 1 {
 			t.Fatalf("rows affected expects: %v, got %v", 1, results.RowsAffected)
@@ -57,7 +68,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 
 		u1 = user{} // important to reinitialize this before creating it again
 		u2 := user{}
-		db := DB.Session(&gorm.Session{CreateBatchSize: 10})
+		db := db.Session(&gorm.Session{CreateBatchSize: 10})
 
 		if results := db.Create([]*user{&u1, &u2}); results.Error != nil {
 			t.Fatalf("errors happened on create: %v", results.Error)
@@ -70,7 +81,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 		}
 
 		var gotUsers []user
-		results = DB.Where("id in (?, ?)", u1.ID, u2.ID).Order("id asc").Select("id, name").Find(&gotUsers)
+		results = db.Where("id in (?, ?)", u1.ID, u2.ID).Order("id asc").Select("id, name").Find(&gotUsers)
 		if results.Error != nil {
 			t.Fatalf("errors happened on first: %v", results.Error)
 		} else if results.RowsAffected != 2 {
@@ -83,7 +94,7 @@ func TestReturningWithNullToZeroValues(t *testing.T) {
 
 		u1.Name = "Jinzhu"
 		u2.Name = "Zhang"
-		if results := DB.Save([]*user{&u1, &u2}); results.Error != nil {
+		if results := db.Save([]*user{&u1, &u2}); results.Error != nil {
 			t.Fatalf("errors happened on update: %v", results.Error)
 		} else if results.RowsAffected != 2 {
 			t.Fatalf("rows affected expects: %v, got %v", 1, results.RowsAffected)

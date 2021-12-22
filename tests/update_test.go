@@ -2,6 +2,7 @@ package tests_test
 
 import (
 	"errors"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -15,6 +16,16 @@ import (
 )
 
 func TestUpdate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var (
 		users = []*User{
 			GetUser("update-1", Config{}),
@@ -34,18 +45,18 @@ func TestUpdate(t *testing.T) {
 
 	checkOtherData := func(name string) {
 		var first, last User
-		if err := DB.Where("id = ?", users[0].ID).First(&first).Error; err != nil {
+		if err := db.Where("id = ?", users[0].ID).First(&first).Error; err != nil {
 			t.Errorf("errors happened when query before user: %v", err)
 		}
-		CheckUser(t, first, *users[0])
+		CheckUser(t, first, *users[0], db)
 
-		if err := DB.Where("id = ?", users[2].ID).First(&last).Error; err != nil {
+		if err := db.Where("id = ?", users[2].ID).First(&last).Error; err != nil {
 			t.Errorf("errors happened when query after user: %v", err)
 		}
-		CheckUser(t, last, *users[2])
+		CheckUser(t, last, *users[2], db)
 	}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Fatalf("errors happened when create: %v", err)
 	} else if user.ID == 0 {
 		t.Fatalf("user's primary value should not zero, %v", user.ID)
@@ -54,7 +65,7 @@ func TestUpdate(t *testing.T) {
 	}
 	lastUpdatedAt = user.UpdatedAt
 
-	if err := DB.Model(user).Update("Age", 10).Error; err != nil {
+	if err := db.Model(user).Update("Age", 10).Error; err != nil {
 		t.Errorf("errors happened when update: %v", err)
 	} else if user.Age != 10 {
 		t.Errorf("Age should equals to 10, but got %v", user.Age)
@@ -63,14 +74,14 @@ func TestUpdate(t *testing.T) {
 	checkOtherData("Update")
 
 	var result User
-	if err := DB.Where("id = ?", user.ID).First(&result).Error; err != nil {
+	if err := db.Where("id = ?", user.ID).First(&result).Error; err != nil {
 		t.Errorf("errors happened when query: %v", err)
 	} else {
-		CheckUser(t, result, *user)
+		CheckUser(t, result, *user, db)
 	}
 
 	values := map[string]interface{}{"Active": true, "age": 5}
-	if res := DB.Model(user).Updates(values); res.Error != nil {
+	if res := db.Model(user).Updates(values); res.Error != nil {
 		t.Errorf("errors happened when update: %v", res.Error)
 	} else if res.RowsAffected != 1 {
 		t.Errorf("rows affected should be 1, but got : %v", res.RowsAffected)
@@ -83,13 +94,13 @@ func TestUpdate(t *testing.T) {
 	checkOtherData("Updates with map")
 
 	var result2 User
-	if err := DB.Where("id = ?", user.ID).First(&result2).Error; err != nil {
+	if err := db.Where("id = ?", user.ID).First(&result2).Error; err != nil {
 		t.Errorf("errors happened when query: %v", err)
 	} else {
-		CheckUser(t, result2, *user)
+		CheckUser(t, result2, *user, db)
 	}
 
-	if err := DB.Model(user).Updates(User{Age: 2}).Error; err != nil {
+	if err := db.Model(user).Updates(User{Age: 2}).Error; err != nil {
 		t.Errorf("errors happened when update: %v", err)
 	} else if user.Age != 2 {
 		t.Errorf("Age should equals to 2, but got %v", user.Age)
@@ -98,15 +109,15 @@ func TestUpdate(t *testing.T) {
 	checkOtherData("Updates with struct")
 
 	var result3 User
-	if err := DB.Where("id = ?", user.ID).First(&result3).Error; err != nil {
+	if err := db.Where("id = ?", user.ID).First(&result3).Error; err != nil {
 		t.Errorf("errors happened when query: %v", err)
 	} else {
-		CheckUser(t, result3, *user)
+		CheckUser(t, result3, *user, db)
 	}
 
 	user.Active = false
 	user.Age = 1
-	if err := DB.Save(user).Error; err != nil {
+	if err := db.Save(user).Error; err != nil {
 		t.Errorf("errors happened when update: %v", err)
 	} else if user.Age != 1 {
 		t.Errorf("Age should equals to 1, but got %v", user.Age)
@@ -117,24 +128,34 @@ func TestUpdate(t *testing.T) {
 	checkOtherData("Save")
 
 	var result4 User
-	if err := DB.Where("id = ?", user.ID).First(&result4).Error; err != nil {
+	if err := db.Where("id = ?", user.ID).First(&result4).Error; err != nil {
 		t.Errorf("errors happened when query: %v", err)
 	} else {
-		CheckUser(t, result4, *user)
+		CheckUser(t, result4, *user, db)
 	}
 }
 
 func TestUpdates(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []*User{
 		GetUser("updates_01", Config{}),
 		GetUser("updates_02", Config{}),
 	}
 
-	DB.Create(&users)
+	db.Create(&users)
 	lastUpdatedAt := users[0].UpdatedAt
 
 	// update with map
-	if res := DB.Model(users[0]).Updates(map[string]interface{}{"name": "updates_01_newname", "age": 100}); res.Error != nil || res.RowsAffected != 1 {
+	if res := db.Model(users[0]).Updates(map[string]interface{}{"name": "updates_01_newname", "age": 100}); res.Error != nil || res.RowsAffected != 1 {
 		t.Errorf("Failed to update users")
 	}
 
@@ -148,17 +169,17 @@ func TestUpdates(t *testing.T) {
 
 	// user2 should not be updated
 	var user1, user2 User
-	DB.First(&user1, users[0].ID)
-	DB.First(&user2, users[1].ID)
-	CheckUser(t, user1, *users[0])
-	CheckUser(t, user2, *users[1])
+	db.First(&user1, users[0].ID)
+	db.First(&user2, users[1].ID)
+	CheckUser(t, user1, *users[0], db)
+	CheckUser(t, user2, *users[1], db)
 
 	// update with struct
 	time.Sleep(1 * time.Second)
-	DB.Table("users").Where("name in ?", []string{users[1].Name}).Updates(User{Name: "updates_02_newname"})
+	db.Table("users").Where("name in ?", []string{users[1].Name}).Updates(User{Name: "updates_02_newname"})
 
 	var user3 User
-	if err := DB.First(&user3, "name = ?", "updates_02_newname").Error; err != nil {
+	if err := db.First(&user3, "name = ?", "updates_02_newname").Error; err != nil {
 		t.Errorf("User2's name should be updated")
 	}
 
@@ -167,27 +188,37 @@ func TestUpdates(t *testing.T) {
 	}
 
 	// update with gorm exprs
-	if err := DB.Model(&user3).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
+	if err := db.Model(&user3).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
 		t.Errorf("Not error should happen when updating with gorm expr, but got %v", err)
 	}
 	var user4 User
-	DB.First(&user4, user3.ID)
+	db.First(&user4, user3.ID)
 
 	user3.Age += 100
 	AssertObjEqual(t, user4, user3, "UpdatedAt", "Age")
 }
 
 func TestUpdateColumn(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []*User{
 		GetUser("update_column_01", Config{}),
 		GetUser("update_column_02", Config{}),
 	}
 
-	DB.Create(&users)
+	db.Create(&users)
 	lastUpdatedAt := users[1].UpdatedAt
 
 	// update with map
-	DB.Model(users[1]).UpdateColumns(map[string]interface{}{"name": "update_column_02_newname", "age": 100})
+	db.Model(users[1]).UpdateColumns(map[string]interface{}{"name": "update_column_02_newname", "age": 100})
 	if users[1].Name != "update_column_02_newname" || users[1].Age != 100 {
 		t.Errorf("user 2 should be updated with update column")
 	}
@@ -195,27 +226,27 @@ func TestUpdateColumn(t *testing.T) {
 
 	// user2 should not be updated
 	var user1, user2 User
-	DB.First(&user1, users[0].ID)
-	DB.First(&user2, users[1].ID)
-	CheckUser(t, user1, *users[0])
-	CheckUser(t, user2, *users[1])
+	db.First(&user1, users[0].ID)
+	db.First(&user2, users[1].ID)
+	CheckUser(t, user1, *users[0], db)
+	CheckUser(t, user2, *users[1], db)
 
-	DB.Model(users[1]).UpdateColumn("name", "update_column_02_newnew")
+	db.Model(users[1]).UpdateColumn("name", "update_column_02_newnew")
 	AssertEqual(t, lastUpdatedAt.UnixNano(), users[1].UpdatedAt.UnixNano())
 
 	if users[1].Name != "update_column_02_newnew" {
 		t.Errorf("user 2's name should be updated, but got %v", users[1].Name)
 	}
 
-	DB.Model(users[1]).UpdateColumn("age", gorm.Expr("age + 100 - 50"))
+	db.Model(users[1]).UpdateColumn("age", gorm.Expr("age + 100 - 50"))
 	var user3 User
-	DB.First(&user3, users[1].ID)
+	db.First(&user3, users[1].ID)
 
 	users[1].Age += 50
-	CheckUser(t, user3, *users[1])
+	CheckUser(t, user3, *users[1], db)
 
 	// update with struct
-	DB.Model(users[1]).UpdateColumns(User{Name: "update_column_02_newnew2", Age: 200})
+	db.Model(users[1]).UpdateColumns(User{Name: "update_column_02_newnew2", Age: 200})
 	if users[1].Name != "update_column_02_newnew2" || users[1].Age != 200 {
 		t.Errorf("user 2 should be updated with update column")
 	}
@@ -223,28 +254,48 @@ func TestUpdateColumn(t *testing.T) {
 
 	// user2 should not be updated
 	var user5, user6 User
-	DB.First(&user5, users[0].ID)
-	DB.First(&user6, users[1].ID)
-	CheckUser(t, user5, *users[0])
-	CheckUser(t, user6, *users[1])
+	db.First(&user5, users[0].ID)
+	db.First(&user6, users[1].ID)
+	CheckUser(t, user5, *users[0], db)
+	CheckUser(t, user6, *users[1], db)
 }
 
 func TestBlockGlobalUpdate(t *testing.T) {
-	if err := DB.Model(&User{}).Update("name", "jinzhu").Error; err == nil || !errors.Is(err, gorm.ErrMissingWhereClause) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if err := db.Model(&User{}).Update("name", "jinzhu").Error; err == nil || !errors.Is(err, gorm.ErrMissingWhereClause) {
 		t.Errorf("should returns missing WHERE clause while updating error, got err %v", err)
 	}
 
-	if err := DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&User{}).Update("name", "jinzhu").Error; err != nil {
+	if err := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&User{}).Update("name", "jinzhu").Error; err != nil {
 		t.Errorf("should returns no error while enable global update, but got err %v", err)
 	}
 }
 
 func TestSelectWithUpdate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("select_update", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	user2 := *GetUser("select_update_new", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
 	result.Name = user2.Name
@@ -258,10 +309,10 @@ func TestSelectWithUpdate(t *testing.T) {
 	result.Languages = user2.Languages
 	result.Friends = user2.Friends
 
-	DB.Select("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Save(&result)
+	db.Select("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Save(&result)
 
 	var result2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
 
 	result.Languages = append(user.Languages, result.Languages...)
 	result.Toys = append(user.Toys, result.Toys...)
@@ -284,17 +335,17 @@ func TestSelectWithUpdate(t *testing.T) {
 
 	AssertObjEqual(t, result2, result, "Name", "Account", "Toys", "Manager", "ManagerID", "Languages")
 
-	DB.Model(&result).Select("Name", "Age").Updates(User{Name: "update_with_select"})
+	db.Model(&result).Select("Name", "Age").Updates(User{Name: "update_with_select"})
 	if result.Age != 0 || result.Name != "update_with_select" {
 		t.Fatalf("Failed to update struct with select, got %+v", result)
 	}
 	AssertObjEqual(t, result, user, "UpdatedAt")
 
 	var result3 User
-	DB.First(&result3, result.ID)
+	db.First(&result3, result.ID)
 	AssertObjEqual(t, result, result3, "Name", "Age", "UpdatedAt")
 
-	DB.Model(&result).Select("Name", "Age", "UpdatedAt").Updates(User{Name: "update_with_select"})
+	db.Model(&result).Select("Name", "Age", "UpdatedAt").Updates(User{Name: "update_with_select"})
 
 	if utils.AssertEqual(result.UpdatedAt, user.UpdatedAt) {
 		t.Fatalf("Update struct should update UpdatedAt, was %+v, got %+v", result.UpdatedAt, user.UpdatedAt)
@@ -302,11 +353,21 @@ func TestSelectWithUpdate(t *testing.T) {
 }
 
 func TestSelectWithUpdateWithMap(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("select_update_map", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	user2 := *GetUser("select_update_map_new", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
 	updateValues := map[string]interface{}{
@@ -322,10 +383,10 @@ func TestSelectWithUpdateWithMap(t *testing.T) {
 		"Friends":   user2.Friends,
 	}
 
-	DB.Model(&result).Omit("name", "updated_at").Updates(updateValues)
+	db.Model(&result).Omit("name", "updated_at").Updates(updateValues)
 
 	var result2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
 
 	result.Languages = append(user.Languages, result.Languages...)
 	result.Toys = append(user.Toys, result.Toys...)
@@ -350,20 +411,40 @@ func TestSelectWithUpdateWithMap(t *testing.T) {
 }
 
 func TestWithUpdateWithInvalidMap(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("update_with_invalid_map", Config{})
-	DB.Create(&user)
+	db.Create(&user)
 
-	if err := DB.Model(&user).Updates(map[string]string{"name": "jinzhu"}).Error; !errors.Is(err, gorm.ErrInvalidData) {
+	if err := db.Model(&user).Updates(map[string]string{"name": "jinzhu"}).Error; !errors.Is(err, gorm.ErrInvalidData) {
 		t.Errorf("should returns error for unsupported updating data")
 	}
 }
 
 func TestOmitWithUpdate(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("omit_update", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	user2 := *GetUser("omit_update_new", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
 	result.Name = user2.Name
@@ -377,10 +458,10 @@ func TestOmitWithUpdate(t *testing.T) {
 	result.Languages = user2.Languages
 	result.Friends = user2.Friends
 
-	DB.Omit("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Save(&result)
+	db.Omit("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Save(&result)
 
 	var result2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
 
 	result.Pets = append(user.Pets, result.Pets...)
 	result.Team = append(user.Team, result.Team...)
@@ -409,11 +490,21 @@ func TestOmitWithUpdate(t *testing.T) {
 }
 
 func TestOmitWithUpdateWithMap(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("omit_update_map", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	user2 := *GetUser("omit_update_map_new", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
 	updateValues := map[string]interface{}{
@@ -429,10 +520,10 @@ func TestOmitWithUpdateWithMap(t *testing.T) {
 		"Friends":   user2.Friends,
 	}
 
-	DB.Model(&result).Omit("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Updates(updateValues)
+	db.Model(&result).Omit("Name", "Account", "Toys", "Manager", "ManagerID", "Languages").Updates(updateValues)
 
 	var result2 User
-	DB.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
+	db.Preload("Account").Preload("Pets").Preload("Toys").Preload("Company").Preload("Manager").Preload("Team").Preload("Languages").Preload("Friends").First(&result2, user.ID)
 
 	result.Pets = append(user.Pets, result.Pets...)
 	result.Team = append(user.Team, result.Team...)
@@ -461,20 +552,30 @@ func TestOmitWithUpdateWithMap(t *testing.T) {
 }
 
 func TestSelectWithUpdateColumn(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("select_with_update_column", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	updateValues := map[string]interface{}{"Name": "new_name", "Age": 50}
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	time.Sleep(time.Second)
 	lastUpdatedAt := result.UpdatedAt
-	DB.Model(&result).Select("Name").Updates(updateValues)
+	db.Model(&result).Select("Name").Updates(updateValues)
 
 	var result2 User
-	DB.First(&result2, user.ID)
+	db.First(&result2, user.ID)
 
 	if lastUpdatedAt.Format(time.RFC3339Nano) == result2.UpdatedAt.Format(time.RFC3339Nano) {
 		t.Errorf("UpdatedAt should be changed")
@@ -486,17 +587,27 @@ func TestSelectWithUpdateColumn(t *testing.T) {
 }
 
 func TestOmitWithUpdateColumn(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("omit_with_update_column", Config{Account: true, Pets: 3, Toys: 3, Company: true, Manager: true, Team: 3, Languages: 3, Friends: 4})
-	DB.Create(&user)
+	db.Create(&user)
 
 	updateValues := map[string]interface{}{"Name": "new_name", "Age": 50}
 
 	var result User
-	DB.First(&result, user.ID)
-	DB.Model(&result).Omit("Name").UpdateColumns(updateValues)
+	db.First(&result, user.ID)
+	db.Model(&result).Omit("Name").UpdateColumns(updateValues)
 
 	var result2 User
-	DB.First(&result2, user.ID)
+	db.First(&result2, user.ID)
 
 	if result2.Name != user.Name || result2.Age == user.Age {
 		t.Errorf("Should only update users with name column")
@@ -504,13 +615,23 @@ func TestOmitWithUpdateColumn(t *testing.T) {
 }
 
 func TestUpdateColumnsSkipsAssociations(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("update_column_skips_association", Config{})
-	DB.Create(&user)
+	db.Create(&user)
 
 	// Update a single field of the user and verify that the changed address is not stored.
 	newAge := uint(100)
 	user.Account.Number = "new_account_number"
-	db := DB.Model(&user).UpdateColumns(User{Age: newAge})
+	db = db.Model(&user).UpdateColumns(User{Age: newAge})
 
 	if db.RowsAffected != 1 {
 		t.Errorf("Expected RowsAffected=1 but instead RowsAffected=%v", db.RowsAffected)
@@ -519,7 +640,7 @@ func TestUpdateColumnsSkipsAssociations(t *testing.T) {
 	// Verify that Age now=`newAge`.
 	result := &User{}
 	result.ID = user.ID
-	DB.Preload("Account").First(result)
+	db.Preload("Account").First(result)
 
 	if result.Age != newAge {
 		t.Errorf("Expected freshly queried user to have Age=%v but instead found Age=%v", newAge, result.Age)
@@ -531,15 +652,25 @@ func TestUpdateColumnsSkipsAssociations(t *testing.T) {
 }
 
 func TestUpdatesWithBlankValues(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("updates_with_blank_value", Config{})
-	DB.Save(&user)
+	db.Save(&user)
 
 	var user2 User
 	user2.ID = user.ID
-	DB.Model(&user2).Updates(&User{Age: 100})
+	db.Model(&user2).Updates(&User{Age: 100})
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	if result.Name != user.Name || result.Age != 100 {
 		t.Errorf("user's name should not be updated")
@@ -547,23 +678,33 @@ func TestUpdatesWithBlankValues(t *testing.T) {
 }
 
 func TestUpdatesTableWithIgnoredValues(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type ElementWithIgnoredField struct {
 		Id           int64
 		Value        string
 		IgnoredField int64 `gorm:"-"`
 	}
-	DB.Migrator().DropTable(&ElementWithIgnoredField{})
-	DB.AutoMigrate(&ElementWithIgnoredField{})
+	db.Migrator().DropTable(&ElementWithIgnoredField{})
+	db.AutoMigrate(&ElementWithIgnoredField{})
 
 	elem := ElementWithIgnoredField{Value: "foo", IgnoredField: 10}
-	DB.Save(&elem)
+	db.Save(&elem)
 
-	DB.Model(&ElementWithIgnoredField{}).
+	db.Model(&ElementWithIgnoredField{}).
 		Where("id = ?", elem.Id).
 		Updates(&ElementWithIgnoredField{Value: "bar", IgnoredField: 100})
 
 	var result ElementWithIgnoredField
-	if err := DB.First(&result, elem.Id).Error; err != nil {
+	if err := db.First(&result, elem.Id).Error; err != nil {
 		t.Errorf("error getting an element from database: %s", err.Error())
 	}
 
@@ -573,57 +714,77 @@ func TestUpdatesTableWithIgnoredValues(t *testing.T) {
 }
 
 func TestUpdateFromSubQuery(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("update_from_sub_query", Config{Company: true})
-	if err := DB.Create(&user).Error; err != nil {
+	if err := db.Create(&user).Error; err != nil {
 		t.Errorf("failed to create user, got error: %v", err)
 	}
 
-	if err := DB.Model(&user).Update("name", DB.Model(&Company{}).Select("name").Where("companies.id = users.company_id")).Error; err != nil {
+	if err := db.Model(&user).Update("name", db.Model(&Company{}).Select("name").Where("companies.id = users.company_id")).Error; err != nil {
 		t.Errorf("failed to update with sub query, got error %v", err)
 	}
 
 	var result User
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 
 	if result.Name != user.Company.Name {
 		t.Errorf("name should be %v, but got %v", user.Company.Name, result.Name)
 	}
 
-	DB.Model(&user.Company).Update("Name", "new company name")
-	if err := DB.Table("users").Where("1 = 1").Update("name", DB.Table("companies").Select("name").Where("companies.id = users.company_id")).Error; err != nil {
+	db.Model(&user.Company).Update("Name", "new company name")
+	if err := db.Table("users").Where("1 = 1").Update("name", db.Table("companies").Select("name").Where("companies.id = users.company_id")).Error; err != nil {
 		t.Errorf("failed to update with sub query, got error %v", err)
 	}
 
-	DB.First(&result, user.ID)
+	db.First(&result, user.ID)
 	if result.Name != "new company name" {
 		t.Errorf("name should be %v, but got %v", user.Company.Name, result.Name)
 	}
 }
 
 func TestSave(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("save", Config{})
-	DB.Create(&user)
+	db.Create(&user)
 
-	if err := DB.First(&User{}, "name = ?", "save").Error; err != nil {
+	if err := db.First(&User{}, "name = ?", "save").Error; err != nil {
 		t.Fatalf("failed to find created user")
 	}
 
 	user.Name = "save2"
-	DB.Save(&user)
+	db.Save(&user)
 
 	var result User
-	if err := DB.First(&result, "name = ?", "save2").Error; err != nil || result.ID != user.ID {
+	if err := db.First(&result, "name = ?", "save2").Error; err != nil || result.ID != user.ID {
 		t.Fatalf("failed to find updated user")
 	}
 
 	user2 := *GetUser("save2", Config{})
-	DB.Create(&user2)
+	db.Create(&user2)
 
 	time.Sleep(time.Second)
 	user1UpdatedAt := result.UpdatedAt
 	user2UpdatedAt := user2.UpdatedAt
 	var users = []*User{&result, &user2}
-	DB.Save(&users)
+	db.Save(&users)
 
 	if user1UpdatedAt.Format(time.RFC1123Z) == result.UpdatedAt.Format(time.RFC1123Z) {
 		t.Fatalf("user's updated at should be changed, expects: %+v, got: %+v", user1UpdatedAt, result.UpdatedAt)
@@ -633,46 +794,46 @@ func TestSave(t *testing.T) {
 		t.Fatalf("user's updated at should be changed, expects: %+v, got: %+v", user2UpdatedAt, user2.UpdatedAt)
 	}
 
-	DB.First(&result)
+	db.First(&result)
 	if user1UpdatedAt.Format(time.RFC1123Z) == result.UpdatedAt.Format(time.RFC1123Z) {
 		t.Fatalf("user's updated at should be changed after reload, expects: %+v, got: %+v", user1UpdatedAt, result.UpdatedAt)
 	}
 
-	DB.First(&user2)
+	db.First(&user2)
 	if user2UpdatedAt.Format(time.RFC1123Z) == user2.UpdatedAt.Format(time.RFC1123Z) {
 		t.Fatalf("user2's updated at should be changed after reload, expects: %+v, got: %+v", user2UpdatedAt, user2.UpdatedAt)
 	}
 
-	dryDB := DB.Session(&gorm.Session{DryRun: true})
+	dryDB := db.Session(&gorm.Session{DryRun: true})
 	stmt := dryDB.Save(&user).Statement
 	if !regexp.MustCompile(`.id. = .* AND .users.\..deleted_at. IS NULL`).MatchString(stmt.SQL.String()) {
 		t.Fatalf("invalid updating SQL, got %v", stmt.SQL.String())
 	}
 
-	dryDB = DB.Session(&gorm.Session{DryRun: true})
+	dryDB = db.Session(&gorm.Session{DryRun: true})
 	stmt = dryDB.Unscoped().Save(&user).Statement
 	if !regexp.MustCompile(`WHERE .id. = [^ ]+$`).MatchString(stmt.SQL.String()) {
 		t.Fatalf("invalid updating SQL, got %v", stmt.SQL.String())
 	}
 
 	user3 := *GetUser("save3", Config{})
-	DB.Create(&user3)
+	db.Create(&user3)
 
-	if err := DB.First(&User{}, "name = ?", "save3").Error; err != nil {
+	if err := db.First(&User{}, "name = ?", "save3").Error; err != nil {
 		t.Fatalf("failed to find created user")
 	}
 
 	user3.Name = "save3_"
-	if err := DB.Model(User{Model: user3.Model}).Save(&user3).Error; err != nil {
+	if err := db.Model(User{Model: user3.Model}).Save(&user3).Error; err != nil {
 		t.Fatalf("failed to save user, got %v", err)
 	}
 
 	var result2 User
-	if err := DB.First(&result2, "name = ?", "save3_").Error; err != nil || result2.ID != user3.ID {
+	if err := db.First(&result2, "name = ?", "save3_").Error; err != nil || result2.ID != user3.ID {
 		t.Fatalf("failed to find updated user, got %v", err)
 	}
 
-	if err := DB.Model(User{Model: user3.Model}).Save(&struct {
+	if err := db.Model(User{Model: user3.Model}).Save(&struct {
 		gorm.Model
 		Placeholder string
 		Name        string
@@ -685,56 +846,76 @@ func TestSave(t *testing.T) {
 	}
 
 	var result3 User
-	if err := DB.First(&result3, "name = ?", "save3__").Error; err != nil || result3.ID != user3.ID {
+	if err := db.First(&result3, "name = ?", "save3__").Error; err != nil || result3.ID != user3.ID {
 		t.Fatalf("failed to find updated user")
 	}
 }
 
 func TestSaveWithPrimaryValue(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	lang := Language{Code: "save", Name: "save"}
-	if result := DB.Save(&lang); result.RowsAffected != 1 {
+	if result := db.Save(&lang); result.RowsAffected != 1 {
 		t.Errorf("should create language, rows affected: %v", result.RowsAffected)
 	}
 
 	var result Language
-	DB.First(&result, "code = ?", "save")
+	db.First(&result, "code = ?", "save")
 	AssertEqual(t, result, lang)
 
 	lang.Name = "save name2"
-	if result := DB.Save(&lang); result.RowsAffected != 1 {
+	if result := db.Save(&lang); result.RowsAffected != 1 {
 		t.Errorf("should update language")
 	}
 
 	var result2 Language
-	DB.First(&result2, "code = ?", "save")
+	db.First(&result2, "code = ?", "save")
 	AssertEqual(t, result2, lang)
 
-	DB.Table("langs").Migrator().DropTable(&Language{})
-	DB.Table("langs").AutoMigrate(&Language{})
+	db.Table("langs").Migrator().DropTable(&Language{})
+	db.Table("langs").AutoMigrate(&Language{})
 
-	if err := DB.Table("langs").Save(&lang).Error; err != nil {
+	if err := db.Table("langs").Save(&lang).Error; err != nil {
 		t.Errorf("no error should happen when creating data, but got %v", err)
 	}
 
 	var result3 Language
-	if err := DB.Table("langs").First(&result3, "code = ?", lang.Code).Error; err != nil || result3.Name != lang.Name {
+	if err := db.Table("langs").First(&result3, "code = ?", lang.Code).Error; err != nil || result3.Name != lang.Name {
 		t.Errorf("failed to find created record, got error: %v, result: %+v", err, result3)
 	}
 
 	lang.Name += "name2"
-	if err := DB.Table("langs").Save(&lang).Error; err != nil {
+	if err := db.Table("langs").Save(&lang).Error; err != nil {
 		t.Errorf("no error should happen when creating data, but got %v", err)
 	}
 
 	var result4 Language
-	if err := DB.Table("langs").First(&result4, "code = ?", lang.Code).Error; err != nil || result4.Name != lang.Name {
+	if err := db.Table("langs").First(&result4, "code = ?", lang.Code).Error; err != nil || result4.Name != lang.Name {
 		t.Errorf("failed to find created record, got error: %v, result: %+v", err, result4)
 	}
 }
 
 // only sqlite, postgres support returning
 func TestUpdateReturning(t *testing.T) {
-	if DB.Dialector.Name() != "sqlite" && DB.Dialector.Name() != "postgres" {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if db.Dialector.Name() != "sqlite" && db.Dialector.Name() != "postgres" {
 		return
 	}
 
@@ -743,19 +924,19 @@ func TestUpdateReturning(t *testing.T) {
 		GetUser("update-returning-2", Config{}),
 		GetUser("update-returning-3", Config{}),
 	}
-	DB.Create(&users)
+	db.Create(&users)
 
 	var results []User
-	DB.Model(&results).Where("name IN ?", []string{users[0].Name, users[1].Name}).Clauses(clause.Returning{}).Update("age", 88)
+	db.Model(&results).Where("name IN ?", []string{users[0].Name, users[1].Name}).Clauses(clause.Returning{}).Update("age", 88)
 	if len(results) != 2 || results[0].Age != 88 || results[1].Age != 88 {
 		t.Errorf("failed to return updated data, got %v", results)
 	}
 
-	if err := DB.Model(&results[0]).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
+	if err := db.Model(&results[0]).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
 		t.Errorf("Not error should happen when updating with gorm expr, but got %v", err)
 	}
 
-	if err := DB.Model(&results[1]).Clauses(clause.Returning{Columns: []clause.Column{{Name: "age"}}}).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
+	if err := db.Model(&results[1]).Clauses(clause.Returning{Columns: []clause.Column{{Name: "age"}}}).Updates(map[string]interface{}{"age": gorm.Expr("age + ?", 100)}).Error; err != nil {
 		t.Errorf("Not error should happen when updating with gorm expr, but got %v", err)
 	}
 

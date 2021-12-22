@@ -1,6 +1,7 @@
 package tests_test
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,12 +14,22 @@ import (
 )
 
 func TestRow(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user1 := User{Name: "RowUser1", Age: 1}
 	user2 := User{Name: "RowUser2", Age: 10}
 	user3 := User{Name: "RowUser3", Age: 20}
-	DB.Save(&user1).Save(&user2).Save(&user3)
+	db.Save(&user1).Save(&user2).Save(&user3)
 
-	row := DB.Table("users").Where("name = ?", user2.Name).Select("age").Row()
+	row := db.Table("users").Where("name = ?", user2.Name).Select("age").Row()
 
 	var age int64
 	if err := row.Scan(&age); err != nil {
@@ -30,13 +41,13 @@ func TestRow(t *testing.T) {
 	}
 
 	table := "gorm.users"
-	if DB.Dialector.Name() != "mysql" {
+	if db.Dialector.Name() != "mysql" {
 		table = "users" // other databases doesn't support select with `database.table`
 	}
 
-	DB.Table(table).Where(map[string]interface{}{"name": user2.Name}).Update("age", 20)
+	db.Table(table).Where(map[string]interface{}{"name": user2.Name}).Update("age", 20)
 
-	row = DB.Table(table+" as u").Where("u.name = ?", user2.Name).Select("age").Row()
+	row = db.Table(table+" as u").Where("u.name = ?", user2.Name).Select("age").Row()
 	if err := row.Scan(&age); err != nil {
 		t.Fatalf("Failed to scan age, got %v", err)
 	}
@@ -47,12 +58,22 @@ func TestRow(t *testing.T) {
 }
 
 func TestRows(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user1 := User{Name: "RowsUser1", Age: 1}
 	user2 := User{Name: "RowsUser2", Age: 10}
 	user3 := User{Name: "RowsUser3", Age: 20}
-	DB.Save(&user1).Save(&user2).Save(&user3)
+	db.Save(&user1).Save(&user2).Save(&user3)
 
-	rows, err := DB.Table("users").Where("name = ? or name = ?", user2.Name, user3.Name).Select("name, age").Rows()
+	rows, err := db.Table("users").Where("name = ? or name = ?", user2.Name, user3.Name).Select("name, age").Rows()
 	if err != nil {
 		t.Errorf("Not error should happen, got %v", err)
 	}
@@ -71,10 +92,20 @@ func TestRows(t *testing.T) {
 }
 
 func TestRaw(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user1 := User{Name: "ExecRawSqlUser1", Age: 1}
 	user2 := User{Name: "ExecRawSqlUser2", Age: 10}
 	user3 := User{Name: "ExecRawSqlUser3", Age: 20}
-	DB.Save(&user1).Save(&user2).Save(&user3)
+	db.Save(&user1).Save(&user2).Save(&user3)
 
 	type result struct {
 		Name  string
@@ -82,12 +113,12 @@ func TestRaw(t *testing.T) {
 	}
 
 	var results []result
-	DB.Raw("SELECT name, age FROM users WHERE name = ? or name = ?", user2.Name, user3.Name).Scan(&results)
+	db.Raw("SELECT name, age FROM users WHERE name = ? or name = ?", user2.Name, user3.Name).Scan(&results)
 	if len(results) != 2 || results[0].Name != user2.Name || results[1].Name != user3.Name {
 		t.Errorf("Raw with scan")
 	}
 
-	rows, _ := DB.Raw("select name, age from users where name = ?", user3.Name).Rows()
+	rows, _ := db.Raw("select name, age from users where name = ?", user3.Name).Rows()
 	count := 0
 	for rows.Next() {
 		count++
@@ -96,15 +127,15 @@ func TestRaw(t *testing.T) {
 		t.Errorf("Raw with Rows should find one record with name 3")
 	}
 
-	DB.Exec("update users set name=? where name in (?)", "jinzhu-raw", []string{user1.Name, user2.Name, user3.Name})
-	if DB.Where("name in (?)", []string{user1.Name, user2.Name, user3.Name}).First(&User{}).Error != gorm.ErrRecordNotFound {
+	db.Exec("update users set name=? where name in (?)", "jinzhu-raw", []string{user1.Name, user2.Name, user3.Name})
+	if db.Where("name in (?)", []string{user1.Name, user2.Name, user3.Name}).First(&User{}).Error != gorm.ErrRecordNotFound {
 		t.Error("Raw sql to update records")
 	}
 
-	DB.Exec("update users set age=? where name = ?", gorm.Expr("age * ? + ?", 2, 10), "jinzhu-raw")
+	db.Exec("update users set age=? where name = ?", gorm.Expr("age * ? + ?", 2, 10), "jinzhu-raw")
 
 	var age int
-	DB.Raw("select sum(age) from users where name = ?", "jinzhu-raw").Scan(&age)
+	db.Raw("select sum(age) from users where name = ?", "jinzhu-raw").Scan(&age)
 
 	if age != ((1+10+20)*2 + 30) {
 		t.Errorf("Invalid age, got %v", age)
@@ -112,6 +143,16 @@ func TestRaw(t *testing.T) {
 }
 
 func TestRowsWithGroup(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []User{
 		{Name: "having_user_1", Age: 1},
 		{Name: "having_user_2", Age: 10},
@@ -119,9 +160,9 @@ func TestRowsWithGroup(t *testing.T) {
 		{Name: "having_user_1", Age: 30},
 	}
 
-	DB.Create(&users)
+	db.Create(&users)
 
-	rows, err := DB.Select("name, count(*) as total").Table("users").Group("name").Having("name IN ?", []string{users[0].Name, users[1].Name}).Rows()
+	rows, err := db.Select("name, count(*) as total").Table("users").Group("name").Having("name IN ?", []string{users[0].Name, users[1].Name}).Rows()
 	if err != nil {
 		t.Fatalf("got error %v", err)
 	}
@@ -141,22 +182,42 @@ func TestRowsWithGroup(t *testing.T) {
 }
 
 func TestQueryRaw(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	users := []*User{
 		GetUser("row_query_user", Config{}),
 		GetUser("row_query_user", Config{}),
 		GetUser("row_query_user", Config{}),
 	}
-	DB.Create(&users)
+	db.Create(&users)
 
 	var user User
-	DB.Raw("select * from users WHERE id = ?", users[1].ID).First(&user)
-	CheckUser(t, user, *users[1])
+	db.Raw("select * from users WHERE id = ?", users[1].ID).First(&user)
+	CheckUser(t, user, *users[1], db)
 }
 
 func TestDryRun(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	user := *GetUser("dry-run", Config{})
 
-	dryRunDB := DB.Session(&gorm.Session{DryRun: true})
+	dryRunDB := db.Session(&gorm.Session{DryRun: true})
 
 	stmt := dryRunDB.Create(&user).Statement
 	if stmt.SQL.String() == "" || len(stmt.Vars) != 9 {
@@ -170,23 +231,33 @@ func TestDryRun(t *testing.T) {
 }
 
 func TestGroupConditions(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	type Pizza struct {
 		ID   uint
 		Name string
 		Size string
 	}
-	dryRunDB := DB.Session(&gorm.Session{DryRun: true})
+	dryRunDB := db.Session(&gorm.Session{DryRun: true})
 
 	stmt := dryRunDB.Where(
-		DB.Where("pizza = ?", "pepperoni").Where(DB.Where("size = ?", "small").Or("size = ?", "medium")),
+		db.Where("pizza = ?", "pepperoni").Where(db.Where("size = ?", "small").Or("size = ?", "medium")),
 	).Or(
-		DB.Where("pizza = ?", "hawaiian").Where("size = ?", "xlarge"),
+		db.Where("pizza = ?", "hawaiian").Where("size = ?", "xlarge"),
 	).Find(&Pizza{}).Statement
 
 	execStmt := dryRunDB.Exec("WHERE (pizza = ? AND (size = ? OR size = ?)) OR (pizza = ? AND size = ?)", "pepperoni", "small", "medium", "hawaiian", "xlarge").Statement
 
-	result := DB.Dialector.Explain(stmt.SQL.String(), stmt.Vars...)
-	expects := DB.Dialector.Explain(execStmt.SQL.String(), execStmt.Vars...)
+	result := db.Dialector.Explain(stmt.SQL.String(), stmt.Vars...)
+	expects := db.Dialector.Explain(execStmt.SQL.String(), execStmt.Vars...)
 
 	if !strings.HasSuffix(result, expects) {
 		t.Errorf("expects: %v, got %v", expects, result)
@@ -194,7 +265,17 @@ func TestGroupConditions(t *testing.T) {
 }
 
 func TestCombineStringConditions(t *testing.T) {
-	dryRunDB := DB.Session(&gorm.Session{DryRun: true})
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	dryRunDB := db.Session(&gorm.Session{DryRun: true})
 	sql := dryRunDB.Where("a = ? or b = ?", "a", "b").Find(&User{}).Statement.SQL.String()
 	if !regexp.MustCompile(`WHERE \(a = .+ or b = .+\) AND .users.\..deleted_at. IS NULL`).MatchString(sql) {
 		t.Fatalf("invalid sql generated, got %v", sql)
@@ -247,9 +328,19 @@ func TestCombineStringConditions(t *testing.T) {
 }
 
 func TestFromWithJoins(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var result User
 
-	newDB := DB.Session(&gorm.Session{NewDB: true, DryRun: true}).Table("users")
+	newDB := db.Session(&gorm.Session{NewDB: true, DryRun: true}).Table("users")
 
 	newDB.Clauses(
 		clause.From{
@@ -291,40 +382,50 @@ func TestFromWithJoins(t *testing.T) {
 }
 
 func TestToSQL(t *testing.T) {
-	// By default DB.DryRun should false
-	if DB.DryRun {
-		t.Fatal("Failed expect DB.DryRun to be false")
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	// By default db.DryRun should false
+	if db.DryRun {
+		t.Fatal("Failed expect db.DryRun to be false")
 	}
 
-	if DB.Dialector.Name() == "sqlserver" {
+	if db.Dialector.Name() == "sqlserver" {
 		t.Skip("Skip SQL Server for this test, because it too difference with other dialects.")
 	}
 
 	date, _ := time.Parse("2006-01-02", "2021-10-18")
 
 	// find
-	sql := DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where("id = ?", 100).Limit(10).Order("age desc").Find(&[]User{})
 	})
 	assertEqualSQL(t, `SELECT * FROM "users" WHERE id = 100 AND "users"."deleted_at" IS NULL ORDER BY age desc LIMIT 10`, sql)
 
 	// after model chagned
-	if DB.Statement.DryRun || DB.DryRun {
-		t.Fatal("Failed expect DB.DryRun and DB.Statement.ToSQL to be false")
+	if db.Statement.DryRun || db.DryRun {
+		t.Fatal("Failed expect db.DryRun and db.Statement.ToSQL to be false")
 	}
 
-	if DB.Statement.SQL.String() != "" {
-		t.Fatal("Failed expect DB.Statement.SQL to be empty")
+	if db.Statement.SQL.String() != "" {
+		t.Fatal("Failed expect db.Statement.SQL to be empty")
 	}
 
 	// first
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where(&User{Name: "foo", Age: 20}).Limit(10).Offset(5).Order("name ASC").First(&User{})
 	})
 	assertEqualSQL(t, `SELECT * FROM "users" WHERE "users"."name" = 'foo' AND "users"."age" = 20 AND "users"."deleted_at" IS NULL ORDER BY name ASC,"users"."id" LIMIT 1 OFFSET 5`, sql)
 
 	// last and unscoped
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Unscoped().Where(&User{Name: "bar", Age: 12}).Limit(10).Offset(5).Order("name ASC").Last(&User{})
 	})
 	assertEqualSQL(t, `SELECT * FROM "users" WHERE "users"."name" = 'bar' AND "users"."age" = 12 ORDER BY name ASC,"users"."id" DESC LIMIT 1 OFFSET 5`, sql)
@@ -333,7 +434,7 @@ func TestToSQL(t *testing.T) {
 	user := &User{Name: "foo", Age: 20}
 	user.CreatedAt = date
 	user.UpdatedAt = date
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Create(user)
 	})
 	assertEqualSQL(t, `INSERT INTO "users" ("created_at","updated_at","deleted_at","name","age","birthday","company_id","manager_id","active") VALUES ('2021-10-18 00:00:00','2021-10-18 00:00:00',NULL,'foo',20,NULL,NULL,NULL,false) RETURNING "id"`, sql)
@@ -342,7 +443,7 @@ func TestToSQL(t *testing.T) {
 	user = &User{Name: "foo", Age: 20}
 	user.CreatedAt = date
 	user.UpdatedAt = date
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Save(user)
 	})
 	assertEqualSQL(t, `INSERT INTO "users" ("created_at","updated_at","deleted_at","name","age","birthday","company_id","manager_id","active") VALUES ('2021-10-18 00:00:00','2021-10-18 00:00:00',NULL,'foo',20,NULL,NULL,NULL,false) RETURNING "id"`, sql)
@@ -351,32 +452,32 @@ func TestToSQL(t *testing.T) {
 	user = &User{Name: "bar", Age: 22}
 	user.CreatedAt = date
 	user.UpdatedAt = date
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where("id = ?", 100).Updates(user)
 	})
 	assertEqualSQL(t, `UPDATE "users" SET "created_at"='2021-10-18 00:00:00',"updated_at"='2021-10-18 19:50:09.438',"name"='bar',"age"=22 WHERE id = 100 AND "users"."deleted_at" IS NULL`, sql)
 
 	// update
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where("id = ?", 100).Update("name", "Foo bar")
 	})
 	assertEqualSQL(t, `UPDATE "users" SET "name"='Foo bar',"updated_at"='2021-10-18 19:50:09.438' WHERE id = 100 AND "users"."deleted_at" IS NULL`, sql)
 
 	// UpdateColumn
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where("id = ?", 100).UpdateColumn("name", "Foo bar")
 	})
 	assertEqualSQL(t, `UPDATE "users" SET "name"='Foo bar' WHERE id = 100 AND "users"."deleted_at" IS NULL`, sql)
 
 	// UpdateColumns
-	sql = DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	sql = db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Model(&User{}).Where("id = ?", 100).UpdateColumns(User{Name: "Foo", Age: 100})
 	})
 	assertEqualSQL(t, `UPDATE "users" SET "name"='Foo',"age"=100 WHERE id = 100 AND "users"."deleted_at" IS NULL`, sql)
 
 	// after model chagned
-	if DB.Statement.DryRun || DB.DryRun {
-		t.Fatal("Failed expect DB.DryRun and DB.Statement.ToSQL to be false")
+	if db.Statement.DryRun || db.DryRun {
+		t.Fatal("Failed expect db.DryRun and db.Statement.ToSQL to be false")
 	}
 }
 
@@ -407,11 +508,21 @@ func assertEqualSQL(t *testing.T, expected string, actually string) {
 }
 
 func replaceQuoteInSQL(sql string) string {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+	    if err != nil {
+			return ""
+	    }
+		defer cl()
+	}
 	// convert single quote into double quote
 	sql = strings.Replace(sql, `'`, `"`, -1)
 
 	// convert dialect speical quote into double quote
-	switch DB.Dialector.Name() {
+	switch db.Dialector.Name() {
 	case "postgres":
 		sql = strings.Replace(sql, `"`, `"`, -1)
 	case "mysql", "sqlite":

@@ -6,7 +6,7 @@ import (
 	. "gorm.io/gorm/utils/tests"
 )
 
-func BenchmarkCreate(b *testing.B) {
+func _BenchmarkCreate(b *testing.B) {
 	var user = *GetUser("bench", Config{})
 
 	for x := 0; x < b.N; x++ {
@@ -15,7 +15,7 @@ func BenchmarkCreate(b *testing.B) {
 	}
 }
 
-func BenchmarkFind(b *testing.B) {
+func _BenchmarkFind(b *testing.B) {
 	var user = *GetUser("find", Config{})
 	DB.Create(&user)
 
@@ -24,7 +24,7 @@ func BenchmarkFind(b *testing.B) {
 	}
 }
 
-func BenchmarkUpdate(b *testing.B) {
+func _BenchmarkUpdate(b *testing.B) {
 	var user = *GetUser("find", Config{})
 	DB.Create(&user)
 
@@ -33,7 +33,7 @@ func BenchmarkUpdate(b *testing.B) {
 	}
 }
 
-func BenchmarkDelete(b *testing.B) {
+func _BenchmarkDelete(b *testing.B) {
 	var user = *GetUser("find", Config{})
 
 	for x := 0; x < b.N; x++ {

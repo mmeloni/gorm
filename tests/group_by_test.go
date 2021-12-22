@@ -1,12 +1,24 @@
 package tests_test
 
 import (
+	"gorm.io/gorm"
+	"os"
 	"testing"
 
 	. "gorm.io/gorm/utils/tests"
 )
 
 func TestGroupBy(t *testing.T) {
+	var cl = func() {}
+	var err error
+	var db *gorm.DB
+	if os.Getenv("GORM_DIALECT") == "immudb"{
+		db, cl, err = SetUp()
+		defer cl()
+		if err != nil {
+			t.Error(err)
+		}
+	}
 	var users = []User{{
 		Name:     "groupby",
 		Age:      10,
@@ -37,13 +49,13 @@ func TestGroupBy(t *testing.T) {
 		Active:   true,
 	}}
 
-	if err := DB.Create(&users).Error; err != nil {
+	if err := db.Create(&users).Error; err != nil {
 		t.Errorf("errors happened when create: %v", err)
 	}
 
 	var name string
 	var total int
-	if err := DB.Model(&User{}).Select("name, sum(age)").Where("name = ?", "groupby").Group("name").Row().Scan(&name, &total); err != nil {
+	if err := db.Model(&User{}).Select("name, sum(age)").Where("name = ?", "groupby").Group("name").Row().Scan(&name, &total); err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -51,7 +63,7 @@ func TestGroupBy(t *testing.T) {
 		t.Errorf("name should be groupby, but got %v, total should be 60, but got %v", name, total)
 	}
 
-	if err := DB.Model(&User{}).Select("name, sum(age)").Where("name = ?", "groupby").Group("users.name").Row().Scan(&name, &total); err != nil {
+	if err := db.Model(&User{}).Select("name, sum(age)").Where("name = ?", "groupby").Group("users.name").Row().Scan(&name, &total); err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -59,7 +71,7 @@ func TestGroupBy(t *testing.T) {
 		t.Errorf("name should be groupby, but got %v, total should be 60, but got %v", name, total)
 	}
 
-	if err := DB.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Row().Scan(&name, &total); err != nil {
+	if err := db.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Row().Scan(&name, &total); err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -72,7 +84,7 @@ func TestGroupBy(t *testing.T) {
 		Total int64
 	}{}
 
-	if err := DB.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Find(&result).Error; err != nil {
+	if err := db.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Find(&result).Error; err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -80,7 +92,7 @@ func TestGroupBy(t *testing.T) {
 		t.Errorf("name should be groupby, total should be 660, but got %+v", result)
 	}
 
-	if err := DB.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Scan(&result).Error; err != nil {
+	if err := db.Model(&User{}).Select("name, sum(age) as total").Where("name LIKE ?", "groupby%").Group("name").Having("name = ?", "groupby1").Scan(&result).Error; err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -89,7 +101,7 @@ func TestGroupBy(t *testing.T) {
 	}
 
 	var active bool
-	if err := DB.Model(&User{}).Select("name, active, sum(age)").Where("name = ? and active = ?", "groupby", true).Group("name").Group("active").Row().Scan(&name, &active, &total); err != nil {
+	if err := db.Model(&User{}).Select("name, active, sum(age)").Where("name = ? and active = ?", "groupby", true).Group("name").Group("active").Row().Scan(&name, &active, &total); err != nil {
 		t.Errorf("no error should happen, but got %v", err)
 	}
 
@@ -97,8 +109,8 @@ func TestGroupBy(t *testing.T) {
 		t.Errorf("group by two columns, name %v, age %v, active: %v", name, total, active)
 	}
 
-	if DB.Dialector.Name() == "mysql" {
-		if err := DB.Model(&User{}).Select("name, age as total").Where("name LIKE ?", "groupby%").Having("total > ?", 300).Scan(&result).Error; err != nil {
+	if db.Dialector.Name() == "mysql" {
+		if err := db.Model(&User{}).Select("name, age as total").Where("name LIKE ?", "groupby%").Having("total > ?", 300).Scan(&result).Error; err != nil {
 			t.Errorf("no error should happen, but got %v", err)
 		}
 
